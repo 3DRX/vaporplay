@@ -7,18 +7,19 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vpx/vp8cx.h>
 #include <vpx/vpx_encoder.h>
 #include <vpx/vpx_image.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 typedef struct {
-  vpx_codec_ctx_t codec;
-  vpx_codec_enc_cfg_t cfg;
-  vpx_image_t *image;
-  FILE *output_file;
+  char *output_dir;
   int frame_count;
-} VpxEncoder;
+} FrameWriter;
 
 typedef struct {
   XImage *image;
@@ -80,6 +81,51 @@ SharedImage *create_shared_image(Display *display, Window window) {
   return shared;
 }
 
+FrameWriter *create_frame_writer(const char *output_dir) {
+  FrameWriter *writer = malloc(sizeof(FrameWriter));
+  if (!writer)
+    return NULL;
+
+  writer->output_dir = strdup(output_dir);
+  writer->frame_count = 0;
+
+  return writer;
+}
+
+int save_frame(FrameWriter *writer, XImage *image) {
+  char filename[256];
+  snprintf(filename, sizeof(filename), "%s/frame_%06d.png", writer->output_dir,
+           writer->frame_count++);
+
+  // Convert XImage data to RGB
+  unsigned char *rgb_data = malloc(image->width * image->height * 3);
+  if (!rgb_data)
+    return 0;
+
+  for (int y = 0; y < image->height; y++) {
+    for (int x = 0; x < image->width; x++) {
+      unsigned long pixel = XGetPixel(image, x, y);
+      int idx = (y * image->width + x) * 3;
+      rgb_data[idx] = (pixel >> 16) & 0xFF;    // R
+      rgb_data[idx + 1] = (pixel >> 8) & 0xFF; // G
+      rgb_data[idx + 2] = pixel & 0xFF;        // B
+    }
+  }
+
+  int success = stbi_write_png(filename, image->width, image->height, 3,
+                               rgb_data, image->width * 3);
+
+  free(rgb_data);
+  return success;
+}
+
+void destroy_frame_writer(FrameWriter *writer) {
+  if (writer) {
+    free(writer->output_dir);
+    free(writer);
+  }
+}
+
 void destroy_shared_image(Display *display, SharedImage *shared) {
   if (!shared)
     return;
@@ -102,157 +148,6 @@ int capture_frame(Display *display, Window window, SharedImage *shared) {
   return XShmGetImage(display, window, shared->image, 0, 0, AllPlanes);
 }
 
-VpxEncoder *initialize_vpx_encoder(int width, int height, int fps) {
-  VpxEncoder *encoder = malloc(sizeof(VpxEncoder));
-  if (!encoder)
-    return NULL;
-
-  encoder->frame_count = 0;
-  encoder->output_file = fopen("output.webm", "wb");
-  if (!encoder->output_file) {
-    free(encoder);
-    return NULL;
-  }
-
-  // Initialize codec configuration
-  vpx_codec_err_t res =
-      vpx_codec_enc_config_default(vpx_codec_vp8_cx(), &encoder->cfg, 0);
-  if (res) {
-    fclose(encoder->output_file);
-    free(encoder);
-    return NULL;
-  }
-
-  // Set configuration parameters
-  encoder->cfg.g_w = width;
-  encoder->cfg.g_h = height;
-  encoder->cfg.rc_target_bitrate = 8000; // Target bitrate in kbit/s
-  encoder->cfg.g_timebase.num = 1;
-  encoder->cfg.g_timebase.den = fps;
-  encoder->cfg.rc_end_usage = VPX_CBR;
-  encoder->cfg.g_threads = 4; // Use multiple threads for encoding
-
-  // Initialize codec
-  if (vpx_codec_enc_init(&encoder->codec, vpx_codec_vp8_cx(), &encoder->cfg,
-                         0)) {
-    fclose(encoder->output_file);
-    free(encoder);
-    return NULL;
-  }
-
-  // Allocate image
-  encoder->image = vpx_img_alloc(NULL, VPX_IMG_FMT_I420, width, height, 1);
-  if (!encoder->image) {
-    vpx_codec_destroy(&encoder->codec);
-    fclose(encoder->output_file);
-    free(encoder);
-    return NULL;
-  }
-
-  return encoder;
-}
-
-void destroy_vpx_encoder(VpxEncoder *encoder) {
-  if (!encoder)
-    return;
-
-  // Get and write any remaining packets
-  const vpx_codec_cx_pkt_t *pkt;
-  vpx_codec_iter_t iter = NULL;
-  while ((pkt = vpx_codec_get_cx_data(&encoder->codec, &iter))) {
-    if (pkt->kind == VPX_CODEC_CX_FRAME_PKT) {
-      fwrite(pkt->data.frame.buf, 1, pkt->data.frame.sz, encoder->output_file);
-    }
-  }
-
-  vpx_img_free(encoder->image);
-  vpx_codec_destroy(&encoder->codec);
-  fclose(encoder->output_file);
-  free(encoder);
-}
-
-void convert_ximage_to_vpx(XImage *ximage, vpx_image_t *vpx_img) {
-  // Ensure the vpx_image_t is initialized correctly
-  if (vpx_img == NULL || ximage == NULL) {
-    return; // Handle error appropriately
-  }
-
-  int width = ximage->width;
-  int height = ximage->height;
-
-  // Initialize vpx_image_t for I420 format
-  if (vpx_img->fmt != VPX_IMG_FMT_I420 || vpx_img->d_w != width ||
-      vpx_img->d_h != height) {
-    // Configure vpx_image_t with proper dimensions and format
-    vpx_img->fmt = VPX_IMG_FMT_I420;
-    vpx_img->d_w = width;
-    vpx_img->d_h = height;
-    vpx_img->planes[0] = (uint8_t *)malloc(width * height); // Y plane
-    vpx_img->planes[1] =
-        (uint8_t *)malloc((width / 2) * (height / 2)); // U plane
-    vpx_img->planes[2] =
-        (uint8_t *)malloc((width / 2) * (height / 2)); // V plane
-    vpx_img->stride[0] = width;
-    vpx_img->stride[1] = width / 2;
-    vpx_img->stride[2] = width / 2;
-  }
-
-  // Convert RGB to I420
-  uint8_t *rgb_data = (uint8_t *)ximage->data;
-  uint8_t *y_plane = vpx_img->planes[0];
-  uint8_t *u_plane = vpx_img->planes[1];
-  uint8_t *v_plane = vpx_img->planes[2];
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      // Get RGB values from the XImage
-      int pixel_index =
-          (y * ximage->width + x) * 4; // Assuming 32 bits per pixel (ARGB)
-      uint8_t r = rgb_data[pixel_index + 2]; // Red
-      uint8_t g = rgb_data[pixel_index + 1]; // Green
-      uint8_t b = rgb_data[pixel_index];     // Blue
-
-      // Convert to YUV
-      int Y = (0.299 * r) + (0.587 * g) + (0.114 * b);
-      int U = (-0.147 * r) - (0.289 * g) + (0.436 * b) + 128;
-      int V = (0.615 * r) - (0.515 * g) - (0.100 * b) + 128;
-
-      // Clamping to [0, 255]
-      Y = (Y < 0) ? 0 : (Y > 255) ? 255 : Y;
-      U = (U < 0) ? 0 : (U > 255) ? 255 : U;
-      V = (V < 0) ? 0 : (V > 255) ? 255 : V;
-
-      // Fill Y plane
-      y_plane[y * width + x] = (uint8_t)Y;
-
-      // Fill U and V planes (downsampling)
-      if (x % 2 == 0 && y % 2 == 0) {
-        int uv_index = (y / 2) * (width / 2) + (x / 2);
-        u_plane[uv_index] = (uint8_t)U;
-        v_plane[uv_index] = (uint8_t)V;
-      }
-    }
-  }
-}
-
-void encode_frame(VpxEncoder *encoder, XImage *ximage) {
-  printf("Encoding frame %d\n", encoder->frame_count);
-  convert_ximage_to_vpx(ximage, encoder->image);
-
-  vpx_codec_encode(&encoder->codec, encoder->image, encoder->frame_count, 1, 0,
-                   VPX_DL_REALTIME);
-
-  const vpx_codec_cx_pkt_t *pkt;
-  vpx_codec_iter_t iter = NULL;
-  while ((pkt = vpx_codec_get_cx_data(&encoder->codec, &iter))) {
-    if (pkt->kind == VPX_CODEC_CX_FRAME_PKT) {
-      fwrite(pkt->data.frame.buf, 1, pkt->data.frame.sz, encoder->output_file);
-    }
-  }
-
-  encoder->frame_count++;
-}
-
 void capture_and_encode_window(Display *display, Window window,
                                int duration_seconds, int fps) {
   XWindowAttributes attrs;
@@ -268,10 +163,11 @@ void capture_and_encode_window(Display *display, Window window,
     return;
   }
 
-  VpxEncoder *encoder = initialize_vpx_encoder(attrs.width, attrs.height, fps);
-  if (!encoder) {
+  // Create frame writer instead of VPX encoder
+  FrameWriter *writer = create_frame_writer("frames");
+  if (!writer) {
     destroy_shared_image(display, shared);
-    fprintf(stderr, "Failed to initialize encoder\n");
+    fprintf(stderr, "Failed to initialize frame writer\n");
     return;
   }
 
@@ -281,15 +177,18 @@ void capture_and_encode_window(Display *display, Window window,
   printf("Total frames: %d\n", total_frames);
   int frame_delay_us = 1000000 / fps;
 
+  // Create output directory if it doesn't exist
+  mkdir("frames", 0777);
+
   for (int i = 0; i < total_frames; i++) {
     if (XShmGetImage(display, window, shared->image, 0, 0, AllPlanes)) {
-      encode_frame(encoder, shared->image);
+      save_frame(writer, shared->image);
     }
     usleep(frame_delay_us);
   }
 
   printf("Finished recording\n");
-  destroy_vpx_encoder(encoder);
+  destroy_frame_writer(writer);
   destroy_shared_image(display, shared);
 }
 
