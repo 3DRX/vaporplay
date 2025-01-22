@@ -192,33 +192,33 @@ void capture_and_encode_window(Display *display, Window window,
   destroy_shared_image(display, shared);
 }
 
-int main(int argc, char **argv) {
-  if (argc != 2) {
-    printf("Usage: %s <window_name>\n", argv[0]);
-    return 1;
-  }
-  const char *search_name = argv[1];
-  WindowMatch *match = query_window_by_name(search_name);
+// int main(int argc, char **argv) {
+//   if (argc != 2) {
+//     printf("Usage: %s <window_name>\n", argv[0]);
+//     return 1;
+//   }
+//   const char *search_name = argv[1];
+//   WindowMatch *match = query_window_by_name(search_name);
 
-  if (!match) {
-    printf("No window found containing: %s\n", search_name);
-    return 1;
-  }
+//   if (!match) {
+//     printf("No window found containing: %s\n", search_name);
+//     return 1;
+//   }
 
-  printf("Found window with ID: 0x%lx\n", match->window);
-  // Example: Get window name to verify
-  char *window_name = NULL;
-  if (XFetchName(match->display, match->window, &window_name)) {
-    if (window_name) {
-      printf("Window name: %s\n", window_name);
-      XFree(window_name);
-    }
-  }
+//   printf("Found window with ID: 0x%lx\n", match->window);
+//   // Example: Get window name to verify
+//   char *window_name = NULL;
+//   if (XFetchName(match->display, match->window, &window_name)) {
+//     if (window_name) {
+//       printf("Window name: %s\n", window_name);
+//       XFree(window_name);
+//     }
+//   }
 
-  capture_and_encode_window(match->display, match->window, 5, 60);
+//   capture_and_encode_window(match->display, match->window, 5, 60);
 
-  // Clean up
-  XCloseDisplay(match->display);
-  free(match);
-  return 0;
-}
+//   // Clean up
+//   XCloseDisplay(match->display);
+//   free(match);
+//   return 0;
+// }
