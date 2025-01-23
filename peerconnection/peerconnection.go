@@ -3,6 +3,8 @@ package peerconnection
 import (
 	"log/slog"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
@@ -36,6 +38,7 @@ type PeerConnectionThread struct {
 	sendCandidateChan chan<- webrtc.ICECandidateInit
 	recvCandidateChan <-chan webrtc.ICECandidateInit
 	peerConnection    *webrtc.PeerConnection
+	gameConfig        *config.GameConfig
 }
 
 func NewPeerConnectionThread(
@@ -131,6 +134,7 @@ func NewPeerConnectionThread(
 		sendCandidateChan: sendCandidateChan,
 		recvCandidateChan: recvCandidateChan,
 		peerConnection:    peerConnection,
+		gameConfig:        selectedGame,
 	}
 	return pc
 }
@@ -159,6 +163,15 @@ func (pc *PeerConnectionThread) Spin() {
 	pc.peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		if s == webrtc.PeerConnectionStateClosed {
 			slog.Info("Peer connection closed")
+			// kill game process
+			args := []string{"killall", "-v", "-w", pc.gameConfig.GameProcessName}
+			// print command
+			slog.Info("Killing game process", "command", strings.Join(args, " "))
+			cmd := exec.Command(args[0], args[1:]...)
+			_, err := cmd.Output()
+			if err != nil {
+				panic(err)
+			}
 			// TODO: restore state to be able to connect with a client again
 			os.Exit(0)
 		}
