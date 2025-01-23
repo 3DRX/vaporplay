@@ -1,9 +1,11 @@
 import useWebSocket from "react-use-websocket";
 import { Button } from "./ui/button";
 import { useRef } from "react";
+import { GameInfoType } from "@/lib/types";
 
 export default function Gameplay(props: {
   server: string;
+  game: GameInfoType;
   onExit?: () => void;
 }) {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null); // Store RTCPeerConnection reference
@@ -20,7 +22,7 @@ export default function Gameplay(props: {
       }
     },
     onOpen: () => {
-      ws.sendMessage("Hello");
+      ws.sendMessage(JSON.stringify(props.game));
     },
   });
 
@@ -35,7 +37,7 @@ export default function Gameplay(props: {
     };
 
     pc.ontrack = (event) => {
-      console.log("on track")
+      console.log("on track");
       // Check if the track is a video track
       if (event.track.kind === "video" && videoRef.current) {
         // Create a new media stream and add the video track to it
@@ -92,7 +94,7 @@ export default function Gameplay(props: {
       >
         Exit
       </Button>
-      <video ref={videoRef} autoPlay muted className="w-full max-h-[90vh]" />
+      <video ref={videoRef} autoPlay muted className="max-h-[90vh] w-full" />
     </div>
   );
 }

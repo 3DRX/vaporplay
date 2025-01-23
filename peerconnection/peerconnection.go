@@ -4,7 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	_ "github.com/3DRX/piongs/gamecapture"
+	"github.com/3DRX/piongs/config"
+	"github.com/3DRX/piongs/gamecapture"
 
 	// TODO: custom adapter for game window
 	// rosmediadevicesadapter "github.com/3DRX/webrtc-ros-bridge/ros_mediadevices_adapter"
@@ -42,6 +43,7 @@ func NewPeerConnectionThread(
 	recvSDPChan <-chan webrtc.SessionDescription,
 	sendCandidateChan chan<- webrtc.ICECandidateInit,
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
+	selectedGame *config.GameConfig,
 ) *PeerConnectionThread {
 	params, err := vpx.NewVP8Params()
 	if err != nil {
@@ -94,6 +96,8 @@ func NewPeerConnectionThread(
 	// estimator.OnTargetBitrateChange(func(bitrate int) {
 	// 	slog.Info("Target bitrate changed", "bitrate", bitrate)
 	// })
+
+	gamecapture.Initialize(selectedGame)
 
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {

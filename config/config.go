@@ -12,8 +12,16 @@ import (
 	"strings"
 )
 
+type GameConfig struct {
+	GameId          string `json:"game_id"`
+	GameWindowName  string `json:"game_window_name"`
+	GameDisplayName string `json:"game_display_name"`
+	GameIcon        string `json:"game_icon"`
+}
+
 type Config struct {
-	Addr string `json:"addr"` // http service address
+	Addr  string       `json:"addr"` // http service address
+	Games []GameConfig `json:"games"`
 }
 
 func isValidAddr(addr *string) bool {
@@ -89,6 +97,7 @@ func checkCfg(c *Config) error {
 	if !isValidAddr(&c.Addr) {
 		return fmt.Errorf("invalid ipv4 addr \"%s\"", c.Addr)
 	}
+	// TODO: check game configs
 	return nil
 }
 

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"image"
 	"log/slog"
+	"os/exec"
 	"time"
 
+	"github.com/3DRX/piongs/config"
 	"github.com/pion/mediadevices/pkg/driver"
 	"github.com/pion/mediadevices/pkg/frame"
 	"github.com/pion/mediadevices/pkg/io/video"
@@ -13,30 +15,49 @@ import (
 )
 
 type screen struct {
-	num    int
-	name string
+	name   string
 	reader *reader
 	tick   *time.Ticker
 }
 
-func deviceID(num int) string {
-	return fmt.Sprintf("X11Screen%d", num)
+const (
+	STEAM_CMD = "steam"
+	STEAM_URL = "steam://rungameid/%s"
+)
+
+func deviceID(name string) string {
+	return fmt.Sprintf("X11Screen_%s", name)
 }
 
-func init() {
-	Initialize("Firewatch")
-}
-
-// Initialize finds and registers active displays. This is part of an experimental API.
-func Initialize(windowname string) {
-	slog.Info("Registering screen", "numScreen", 0)
+// Start the game and block until the game window appears
+func Initialize(gameCfg *config.GameConfig) {
+	cmd := exec.Command(STEAM_CMD, fmt.Sprintf(STEAM_URL, gameCfg.GameId))
+	_, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	start := time.Now()
+	for {
+		// wait until the game window appears, timeout by 30 seconds
+		wm, err := openWindow(gameCfg.GameWindowName)
+		if err != nil {
+			now := time.Now()
+			if now.Sub(start) > 30*time.Second {
+				panic("failed to find game window")
+			}
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		wm.Close()
+		break
+	}
+	slog.Info("initializing game capture", "windowname", gameCfg.GameWindowName)
 	driver.GetManager().Register(
 		&screen{
-			num: 0,
-			name: windowname,
+			name: gameCfg.GameWindowName,
 		},
 		driver.Info{
-			Label:      deviceID(0),
+			Label:      deviceID(gameCfg.GameWindowName),
 			DeviceType: driver.Camera,
 		},
 	)
@@ -81,7 +102,7 @@ func (s *screen) Properties() []prop.Media {
 	h := rect.Dy()
 	return []prop.Media{
 		{
-			DeviceID: deviceID(s.num),
+			DeviceID: deviceID(s.name),
 			Video: prop.Video{
 				Width:       w,
 				Height:      h,

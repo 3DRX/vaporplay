@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/3DRX/piongs/config"
+	"github.com/3DRX/piongs/middleware"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
 )
@@ -14,7 +15,7 @@ type SignalingThread struct {
 	cfg                 *config.Config
 	upgrader            *websocket.Upgrader
 	conn                *websocket.Conn
-	haveReceiverPromise chan struct{}
+	haveReceiverPromise chan *config.GameConfig
 	sendSDPChan         <-chan webrtc.SessionDescription
 	recvSDPChan         chan<- webrtc.SessionDescription
 	sendCandidateChan   <-chan webrtc.ICECandidateInit
@@ -37,7 +38,7 @@ func NewSignalingThread(
 			},
 		},
 		conn:                nil,
-		haveReceiverPromise: make(chan struct{}),
+		haveReceiverPromise: make(chan *config.GameConfig),
 		sendSDPChan:         sendSDPChan,
 		recvSDPChan:         recvSDPChan,
 		sendCandidateChan:   sendCandidateChan,
@@ -46,8 +47,19 @@ func NewSignalingThread(
 	}
 }
 
-func (s *SignalingThread) Spin() <-chan struct{} {
+func (s *SignalingThread) Spin() <-chan *config.GameConfig {
 	mux := http.NewServeMux()
+	mux.Handle("GET /games", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		jsonGames, err := json.Marshal(s.cfg.Games)
+		if err != nil {
+			slog.Error("failed to marshal games", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(jsonGames)
+		w.WriteHeader(http.StatusOK)
+		return
+	}))
 	mux.Handle("GET /webrtc", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.conn != nil {
 			slog.Warn("already have a receiver, rejecting new connection")
@@ -65,8 +77,12 @@ func (s *SignalingThread) Spin() <-chan struct{} {
 	}))
 
 	httpServer := &http.Server{
-		Addr:    s.cfg.Addr,
-		Handler: mux,
+		Addr: s.cfg.Addr,
+		Handler: middleware.ChainMiddleware(
+			mux,
+			middleware.LoggingMiddleware,
+			middleware.CORSMiddleware,
+		),
 	}
 	go func() {
 		err := httpServer.ListenAndServe()
@@ -111,12 +127,14 @@ func (s *SignalingThread) handleRecvMessages() {
 			slog.Error("websocket read error", "error", err)
 			return
 		}
-		if string(message) != "Hello" {
+		selectedGame := &config.GameConfig{}
+		err = json.Unmarshal(message, selectedGame)
+		if err != nil {
 			s.connecting = false
 			continue
 		}
 		if !s.connecting {
-			s.haveReceiverPromise <- struct{}{}
+			s.haveReceiverPromise <- selectedGame
 			_, message, err = s.conn.ReadMessage()
 			if err != nil {
 				slog.Error("websocket read error", "error", err)

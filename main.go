@@ -22,13 +22,14 @@ func main() {
 		recvCandidateChan,
 	)
 	haveReceiverPromise := signalingThread.Spin()
-	<-haveReceiverPromise
+	selectedGame := <-haveReceiverPromise
 
 	peerConnectionThread := peerconnection.NewPeerConnectionThread(
 		sendSDPChan,
 		recvSDPChan,
 		sendCandidateChan,
 		recvCandidateChan,
+		selectedGame,
 	)
 	go peerConnectionThread.Spin()
 	select {}

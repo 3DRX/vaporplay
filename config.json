@@ -1,3 +1,11 @@
 {
-    "addr": "0.0.0.0:8080"
+    "addr": "0.0.0.0:8080",
+    "games": [
+        {
+            "game_id": "383870",
+            "game_window_name": "Firewatch",
+            "game_display_name": "Fire Watch",
+            "game_icon": ""
+        }
+    ]
 }

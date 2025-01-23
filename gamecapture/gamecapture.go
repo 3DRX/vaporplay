@@ -68,6 +68,11 @@ func openWindow(windowname string) (*windowmatch, error) {
 	return (*windowmatch)(wm), nil
 }
 
+func (wm *windowmatch) Close() {
+	C.XCloseDisplay(wm.display)
+	C.free(unsafe.Pointer(wm))
+}
+
 type shmImage struct {
 	dp     *C.Display
 	img    *C.XImage
