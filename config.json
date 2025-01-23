@@ -6,6 +6,12 @@
             "game_window_name": "Firewatch",
             "game_display_name": "Fire Watch",
             "game_icon": ""
+        },
+        {
+            "game_id": "105600",
+            "game_window_name": "Terraria",
+            "game_display_name": "Terraria",
+            "game_icon": ""
         }
     ]
 }

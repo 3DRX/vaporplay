@@ -80,7 +80,6 @@ func (s *SignalingThread) Spin() <-chan *config.GameConfig {
 		Addr: s.cfg.Addr,
 		Handler: middleware.ChainMiddleware(
 			mux,
-			middleware.LoggingMiddleware,
 			middleware.CORSMiddleware,
 		),
 	}

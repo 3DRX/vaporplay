@@ -36,6 +36,7 @@ func Initialize(gameCfg *config.GameConfig) {
 	if err != nil {
 		panic(err)
 	}
+	time.Sleep(10 * time.Second)
 	start := time.Now()
 	for {
 		// wait until the game window appears, timeout by 30 seconds
@@ -45,9 +46,11 @@ func Initialize(gameCfg *config.GameConfig) {
 			if now.Sub(start) > 30*time.Second {
 				panic("failed to find game window")
 			}
+			slog.Info("waiting for game window", "windowname", gameCfg.GameWindowName)
 			time.Sleep(1 * time.Second)
 			continue
 		}
+		slog.Info("found game window", "windowname", gameCfg.GameWindowName)
 		wm.Close()
 		break
 	}
