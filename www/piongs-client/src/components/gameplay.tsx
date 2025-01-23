@@ -1,14 +1,14 @@
 import useWebSocket from "react-use-websocket";
-import { Button } from "./ui/button";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GameInfoType } from "@/lib/types";
+import { Button } from "./ui/button";
 
 export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
   onExit?: () => void;
 }) {
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null); // Store RTCPeerConnection reference
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const ws = useWebSocket(`${props.server}/webrtc`, {
     onMessage: (message) => {
@@ -25,6 +25,51 @@ export default function Gameplay(props: {
       ws.sendMessage(JSON.stringify(props.game));
     },
   });
+  const [stats, setStats] = useState({
+    timestamp: 0,
+    bytesReceived: 0,
+    bitrate: 0, // Mbps
+    packetsLost: 0,
+    frameRate: 0,
+    resolution: "0x0",
+    totalInterFrameDelay: 0, // s
+    interFrameDelay: 0,
+  });
+
+  // Stats collection interval
+  useEffect(() => {
+    const statsInterval = setInterval(async () => {
+      if (!peerConnectionRef.current) return;
+
+      const stats = await peerConnectionRef.current.getStats();
+      for (const [_, stat] of stats.entries()) {
+        // @ts-ignore
+        if (stat.type === "inbound-rtp" && stat.kind === "video") {
+          console.log(stat);
+          setStats((prev) => ({
+            timestamp: stat.timestamp,
+            bytesReceived: stat.bytesReceived,
+            bitrate:
+              ((stat.bytesReceived - prev.bytesReceived) * 8) /
+              1_000_000 /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            packetsLost: stat.packetsLost,
+            frameRate: stat.framesPerSecond,
+            resolution: `${stat.frameWidth}x${stat.frameHeight}`,
+            totalInterFrameDelay: stat.totalInterFrameDelay,
+            interFrameDelay:
+              (stat.totalInterFrameDelay - prev.totalInterFrameDelay) /
+              ((stat.timestamp - prev.timestamp) / 1000),
+          }));
+        }
+        // Object.keys(stat).forEach((statName) => {
+        //   console.log(`${statName}: ${report[statName]}`);
+        // });
+      }
+    }, 3000);
+
+    return () => clearInterval(statsInterval);
+  }, []);
 
   const handleSDPOffer = async (offer: RTCSessionDescriptionInit) => {
     // Create a new RTCPeerConnection
@@ -83,18 +128,43 @@ export default function Gameplay(props: {
   };
 
   return (
-    <div>
-      <h1>Gameplay</h1>
-      <Button
-        variant="link"
-        onClick={() => {
-          peerConnectionRef.current?.close();
-          props.onExit && props.onExit();
-        }}
-      >
-        Exit
-      </Button>
-      <video ref={videoRef} autoPlay muted className="max-h-[90vh] w-full" />
+    <div className="relative h-screen w-screen">
+      {/* Video takes up full screen */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        className="absolute inset-0 mb-0 mt-auto h-auto w-full object-cover"
+      />
+
+      {/* Floating top bar */}
+      <div className="absolute left-0 right-0 top-0 flex items-center justify-between bg-black/50 px-4 backdrop-blur-sm">
+        <h1 className="text-lg font-bold text-white">PionGS Gameplay</h1>
+        <div className="flex space-x-4 text-sm text-white/80">
+          <div className="flex flex-col">
+            <span className="text-xs text-white/60">Bitrate</span>
+            <span>{stats.bitrate.toFixed(2)} Mbps</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-white/60">Frame Rate</span>
+            <span>{stats.frameRate} fps</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-white/60">Resolution</span>
+            <span>{stats.resolution}</span>
+          </div>
+        </div>
+        <Button
+          variant="link"
+          onClick={() => {
+            peerConnectionRef.current?.close();
+            props.onExit && props.onExit();
+          }}
+          className="h-5 text-white transition-colors hover:text-gray-300"
+        >
+          Exit
+        </Button>
+      </div>
     </div>
   );
 }

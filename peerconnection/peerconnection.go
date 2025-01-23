@@ -104,8 +104,9 @@ func NewPeerConnectionThread(
 
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {
-			// constraint.Height = prop.Int(1080)
-			constraint.FrameRate = prop.Float(30)
+			constraint.Width = prop.Int(1920)
+			constraint.Height = prop.Int(1080)
+			constraint.FrameRate = prop.Float(60)
 		},
 		Codec: codecselector,
 	})
