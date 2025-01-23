@@ -1,22 +1,18 @@
 CC := gcc
-FLAGS := -L/usr/lib/x86_64-linux-gnu -lX11 -lXext
+FLAGS := -lX11 -lXext
+CGO_CFLAGS := -I$(CURDIR)/gamecapture
+CGO_LDFLAGS := -L$(CURDIR)/gamecapture
 
-SOURCES := $(wildcard ./*.c)
-OBJECTS := $(SOURCES:./%.c=./%.o)
+piongs: gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
+	CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -o piongs
 
-piongs: libwindow-match.so
-	go build -o piongs
+gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
+	cd gamecapture && $(CC) -shared -o libwindowmatch.so -fPIC window_match.c $(FLAGS)
 
-libwindow-match.so: window_match.c window_match.h
-	$(CC) -shared -fPIC window_match.c -o libwindow-match.so $(FLAGS)
-
-main: $(OBJECTS)
-	$(CC) $(OBJECTS) -o main $(FLAGS)
-
-%.o: %.c
-	$(CC) -c $< -o $@
+gamecapture/libgamecapture.so: gamecapture/game_capture.c gamecapture/game_capture.h
+	cd gamecapture && $(CC) -shared -o libgamecapture.so -fPIC game_capture.c $(FLAGS)
 
 clean:
-	rm -f $(OBJECTS) *.so main
+	rm -f gamecapture/*.so piongs
 
-.PHONY: clean
+.PHONY: clean piongs

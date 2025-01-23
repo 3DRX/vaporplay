@@ -92,7 +92,7 @@ export default function Gameplay(props: {
       >
         Exit
       </Button>
-      <video ref={videoRef} autoPlay muted width="640" height="360" />
+      <video ref={videoRef} autoPlay muted className="w-full max-h-[90vh]" />
     </div>
   );
 }

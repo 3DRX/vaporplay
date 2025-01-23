@@ -1,13 +1,6 @@
 package main
 
-/*
-#cgo LDFLAGS: -L. -L/usr/lib/x86_64-linux-gnu -lX11 -lXext
-#include "window_match.h"
-*/
-import "C"
-
 import (
-
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/peerconnection"
 	"github.com/3DRX/piongs/signaling"

@@ -4,14 +4,16 @@ import (
 	"log/slog"
 	"os"
 
-	_ "github.com/pion/mediadevices/pkg/driver/camera"
-	"github.com/pion/mediadevices/pkg/prop"
+	_ "github.com/3DRX/piongs/gamecapture"
 
 	// TODO: custom adapter for game window
 	// rosmediadevicesadapter "github.com/3DRX/webrtc-ros-bridge/ros_mediadevices_adapter"
 	"github.com/pion/interceptor"
+	// "github.com/pion/interceptor/pkg/cc"
+	// "github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/mediadevices"
 	"github.com/pion/mediadevices/pkg/codec/vpx"
+	"github.com/pion/mediadevices/pkg/prop"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -41,15 +43,13 @@ func NewPeerConnectionThread(
 	sendCandidateChan chan<- webrtc.ICECandidateInit,
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 ) *PeerConnectionThread {
-	// TODO
-	// rosmediadevicesadapter.Initialize(imgChan, imgWidth, imgHeight, frameRate)
-	vp8Params, err := vpx.NewVP8Params()
+	params, err := vpx.NewVP8Params()
 	if err != nil {
 		panic(err)
 	}
-	vp8Params.BitRate = 5_000_000
+	params.BitRate = 5_000_000
 	codecselector := mediadevices.NewCodecSelector(
-		mediadevices.WithVideoEncoders(&vp8Params),
+		mediadevices.WithVideoEncoders(&params),
 	)
 	m := &webrtc.MediaEngine{}
 	codecselector.Populate(m)
@@ -57,6 +57,23 @@ func NewPeerConnectionThread(
 	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
 		panic(err)
 	}
+	// congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
+	// 	return gcc.NewSendSideBWE(gcc.SendSideBWEInitialBitrate(400_000))
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// estimatorChan := make(chan cc.BandwidthEstimator, 1)
+	// congestionControllerFactory.OnNewPeerConnection(func(id string, estimator cc.BandwidthEstimator) { //nolint: revive
+	// 	estimatorChan <- estimator
+	// })
+	// i.Add(congestionControllerFactory)
+	// if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
+	// 	panic(err)
+	// }
+	// if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
+	// 	panic(err)
+	// }
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -71,11 +88,17 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 
+	// estimator := <-estimatorChan
+
+	// // estimator.GetTargetBitrate()
+	// estimator.OnTargetBitrateChange(func(bitrate int) {
+	// 	slog.Info("Target bitrate changed", "bitrate", bitrate)
+	// })
+
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {
-			constraint.Width = prop.Int(1920)
-			constraint.Height = prop.Int(1080)
-			constraint.FrameRate = prop.Float(60)
+			// constraint.Height = prop.Int(1080)
+			constraint.FrameRate = prop.Float(30)
 		},
 		Codec: codecselector,
 	})
