@@ -1,6 +1,7 @@
 package peerconnection
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
+	"github.com/bendahl/uinput"
 	"github.com/pion/interceptor"
 
 	// "github.com/pion/interceptor/pkg/cc"
@@ -37,6 +39,7 @@ type PeerConnectionThread struct {
 	recvCandidateChan <-chan webrtc.ICECandidateInit
 	peerConnection    *webrtc.PeerConnection
 	gameConfig        *config.GameConfig
+	gamepadControl    *GamepadControl
 }
 
 func NewPeerConnectionThread(
@@ -127,6 +130,11 @@ func NewPeerConnectionThread(
 		slog.Info("add video track success")
 	}
 
+	gamepadControl, err := NewGamepadControl()
+	if err != nil {
+		panic(err)
+	}
+
 	pc := &PeerConnectionThread{
 		sendSDPChan:       sendSDPChan,
 		recvSDPChan:       recvSDPChan,
@@ -134,6 +142,7 @@ func NewPeerConnectionThread(
 		recvCandidateChan: recvCandidateChan,
 		peerConnection:    peerConnection,
 		gameConfig:        selectedGame,
+		gamepadControl:    gamepadControl,
 	}
 	return pc
 }
@@ -156,7 +165,38 @@ func (pc *PeerConnectionThread) Spin() {
 		slog.Info("datachannel open", "label", datachannel.Label(), "ID", datachannel.ID())
 	})
 	datachannel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		slog.Info("datachannel message", "data", string(msg.Data))
+		dto := &GamepadDTO{}
+		err := json.Unmarshal(msg.Data, dto)
+		if err != nil {
+			slog.Warn("Failed to unmarshal datachannel message", "error", err)
+		}
+		slog.Info("datachannel message", "data", dto)
+		if dto.Buttons[0] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonSouth)
+		}
+		if dto.Buttons[1] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonWest)
+		}
+		if dto.Buttons[2] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonEast)
+		}
+		if dto.Buttons[3] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonNorth)
+		}
+		if dto.Buttons[12] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadUp)
+		}
+		if dto.Buttons[13] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadDown)
+		}
+		if dto.Buttons[14] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadLeft)
+		}
+		if dto.Buttons[15] != 0 {
+			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadRight)
+		}
+		pc.gamepadControl.Gamepad.RightStickMove(dto.Axes[2], dto.Axes[3])
+		pc.gamepadControl.Gamepad.LeftStickMove(dto.Axes[0], dto.Axes[1])
 	})
 
 	offer, err := pc.peerConnection.CreateOffer(nil)
