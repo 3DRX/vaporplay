@@ -1,13 +1,16 @@
 import useWebSocket from "react-use-websocket";
 import { useEffect, useRef, useState } from "react";
 import { GameInfoType } from "@/lib/types";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
+import useGamepad from "@/hooks/use-gamepad";
 
 export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
   onExit?: () => void;
 }) {
+  const { gamepadState: gamepad } = useGamepad();
+  console.log(gamepad);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const ws = useWebSocket(`${props.server}/webrtc`, {
