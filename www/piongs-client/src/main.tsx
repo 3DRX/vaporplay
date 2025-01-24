@@ -54,26 +54,28 @@ function App() {
       {server.length !== 0 && game ? (
         <Gameplay server={server} game={game} onExit={onExit} />
       ) : (
-        <Card className="mx-auto mt-10 max-w-[60rem]">
-          <CardHeader>
-            <CardTitle>Connect to server</CardTitle>
-            <CardDescription></CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ConnectionForm onSubmit={onSubmit} />
-          </CardContent>
-        </Card>
+        <>
+          <Card className="mx-auto mt-10 max-w-[60rem]">
+            <CardHeader>
+              <CardTitle>Connect to server</CardTitle>
+              <CardDescription></CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ConnectionForm onSubmit={onSubmit} />
+            </CardContent>
+          </Card>
+          <div className="mx-auto mt-10 max-w-[60rem]">
+            <h2 className="text-xl font-bold">Debugging</h2>
+            <ul className="my-5">
+              <li>
+                <Button variant="link" className="underline">
+                  <Link to="/gamepad-test">Gamepad Test</Link>
+                </Button>
+              </li>
+            </ul>
+          </div>
+        </>
       )}
-      <div className="mx-auto mt-10 max-w-[60rem]">
-        <h2 className="text-xl font-bold">Debugging</h2>
-        <ul className="my-5">
-          <li>
-            <Button variant="link" className="underline">
-              <Link to="/gamepad-test">Gamepad Test</Link>
-            </Button>
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }

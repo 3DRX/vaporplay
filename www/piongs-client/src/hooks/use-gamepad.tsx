@@ -1,24 +1,21 @@
-import { useEffect, useState } from "react";
+import { GamepadAndState, GamepadState } from "@/lib/types";
+import { isEqual } from "lodash";
+import { useEffect, useRef } from "react";
 
-export interface GamepadState {
-  connected: boolean;
-  buttons: {
-    pressed: boolean;
-    value: number;
-  }[];
-  axes: number[];
-  id: string;
-}
+export const defaultGamepadState: GamepadState = {
+  connected: false,
+  buttons: [],
+  axes: [],
+  id: "",
+};
 
-export default function useGamepad() {
-  const [gamepad, setGamepad] = useState<Gamepad | undefined>(undefined);
-  const [gamepadState, setGamepadState] = useState<GamepadState>({
-    connected: false,
-    buttons: [],
-    axes: [],
-    id: "",
+export default function useGamepad(props: {
+  onGamepadStateChange?: (gamepadState: GamepadState, gamepad: Gamepad) => void;
+}) {
+  const gamepadRef = useRef<GamepadAndState>({
+    gamepad: undefined,
+    gamepadState: defaultGamepadState,
   });
-
   useEffect(() => {
     let animationFrameId: number;
 
@@ -28,26 +25,33 @@ export default function useGamepad() {
 
     const handleGamepadDisconnected = (event: GamepadEvent) => {
       console.log("Gamepad disconnected:", event.gamepad);
-      setGamepadState((prev) => ({ ...prev, connected: false }));
     };
 
     const updateGamepadState = () => {
       const gamepads = navigator.getGamepads();
       const activeGamepad = gamepads[0]; // Using first gamepad
 
-      if (activeGamepad) {
-        setGamepadState({
+      if (activeGamepad && gamepadRef.current) {
+        const newGamepadState: GamepadState = {
           connected: true,
           buttons: Array.from(activeGamepad.buttons).map((button) => ({
             pressed: button.pressed,
-            value: button.value,
+            value: parseFloat(button.value.toFixed(2)),
           })),
-          axes: Array.from(activeGamepad.axes),
+          axes: Array.from(activeGamepad.axes).map((v) =>
+            parseFloat(v.toFixed(2)),
+          ),
           id: activeGamepad.id,
-        });
-        setGamepad(activeGamepad);
+        };
+        if (!isEqual(newGamepadState, gamepadRef.current.gamepadState)) {
+          gamepadRef.current.gamepadState = newGamepadState;
+          gamepadRef.current.gamepad = activeGamepad;
+          props.onGamepadStateChange?.(
+            gamepadRef.current.gamepadState,
+            gamepadRef.current.gamepad,
+          );
+        }
       }
-
       animationFrameId = requestAnimationFrame(updateGamepadState);
     };
 
@@ -66,6 +70,4 @@ export default function useGamepad() {
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
-
-  return { gamepad, gamepadState };
 }

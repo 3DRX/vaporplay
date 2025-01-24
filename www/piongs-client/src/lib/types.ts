@@ -18,3 +18,23 @@ export const formSchema = z.object({
 });
 
 export type FormType = z.infer<typeof formSchema>;
+
+export interface GamepadState {
+  connected: boolean;
+  buttons: {
+    pressed: boolean;
+    value: number;
+  }[];
+  axes: number[];
+  id: string;
+}
+
+export interface GamepadAndState {
+  gamepad: Gamepad | undefined;
+  gamepadState: GamepadState;
+}
+
+export type GamepadStateDto = {
+  b: number[]; // buttons, > 0 is pressed, 0 is unpressed
+  a: number[]; // axes
+};

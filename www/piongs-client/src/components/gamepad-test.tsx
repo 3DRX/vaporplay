@@ -1,8 +1,16 @@
-import useGamepad from "@/hooks/use-gamepad";
+import useGamepad, { defaultGamepadState } from "@/hooks/use-gamepad";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export default function GamepadTest() {
-  const { gamepadState: gamepad, gamepad: gamepadObj } = useGamepad();
+  const [gamepad, setGamepad] = useState(defaultGamepadState);
+  const [gamepadObj, setGamepadObj] = useState<Gamepad | undefined>(undefined);
+  useGamepad({
+    onGamepadStateChange: (gamepadState, gamepad) => {
+      setGamepad(gamepadState);
+      setGamepadObj(gamepad);
+    },
+  });
 
   return (
     <div className="p-4">

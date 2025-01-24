@@ -8,10 +8,8 @@ import (
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
-
-	// TODO: custom adapter for game window
-	// rosmediadevicesadapter "github.com/3DRX/webrtc-ros-bridge/ros_mediadevices_adapter"
 	"github.com/pion/interceptor"
+
 	// "github.com/pion/interceptor/pkg/cc"
 	// "github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/mediadevices"
@@ -150,6 +148,17 @@ func (pc *PeerConnectionThread) handleRemoteICECandidate() {
 }
 
 func (pc *PeerConnectionThread) Spin() {
+	datachannel, err := pc.peerConnection.CreateDataChannel("controller", nil)
+	if err != nil {
+		panic(err)
+	}
+	datachannel.OnOpen(func() {
+		slog.Info("datachannel open", "label", datachannel.Label(), "ID", datachannel.ID())
+	})
+	datachannel.OnMessage(func(msg webrtc.DataChannelMessage) {
+		slog.Info("datachannel message", "data", string(msg.Data))
+	})
+
 	offer, err := pc.peerConnection.CreateOffer(nil)
 	if err != nil {
 		panic(err)

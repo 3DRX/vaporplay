@@ -3,16 +3,30 @@ import { useEffect, useRef, useState } from "react";
 import { GameInfoType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import useGamepad from "@/hooks/use-gamepad";
+import { toGamepadStateDto } from "@/lib/utils";
 
 export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
   onExit?: () => void;
 }) {
-  const { gamepadState: gamepad } = useGamepad();
-  console.log(gamepad);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+
+  useGamepad({
+    onGamepadStateChange: (gamepadState, _) => {
+      if (
+        dataChannelRef.current &&
+        dataChannelRef.current.label === "controller"
+      ) {
+        dataChannelRef.current.send(
+          JSON.stringify(toGamepadStateDto(gamepadState)),
+        );
+      }
+    },
+  });
+
   const ws = useWebSocket(`${props.server}/webrtc`, {
     onMessage: (message) => {
       const signal = JSON.parse(message.data);
@@ -65,9 +79,6 @@ export default function Gameplay(props: {
               ((stat.timestamp - prev.timestamp) / 1000),
           }));
         }
-        // Object.keys(stat).forEach((statName) => {
-        //   console.log(`${statName}: ${report[statName]}`);
-        // });
       }
     }, 3000);
 
@@ -75,10 +86,16 @@ export default function Gameplay(props: {
   }, []);
 
   const handleSDPOffer = async (offer: RTCSessionDescriptionInit) => {
-    // Create a new RTCPeerConnection
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
+
+    pc.ondatachannel = (event) => {
+      if (event.channel) {
+        console.log("Data channel is created!");
+        dataChannelRef.current = event.channel;
+      }
+    };
 
     pc.oniceconnectionstatechange = () => {
       console.log("ICE connection state:", pc.iceConnectionState);
