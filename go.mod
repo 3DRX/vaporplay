@@ -3,7 +3,7 @@ module github.com/3DRX/piongs
 go 1.23.4
 
 require (
-	github.com/bendahl/uinput v1.7.0
+	github.com/ThomasT75/uinput v1.9.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/interceptor v0.1.37
 	github.com/pion/mediadevices v0.7.0

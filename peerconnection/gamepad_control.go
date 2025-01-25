@@ -1,6 +1,6 @@
 package peerconnection
 
-import "github.com/bendahl/uinput"
+import "github.com/ThomasT75/uinput"
 
 type GamepadControl struct {
 	Gamepad uinput.Gamepad
@@ -45,13 +45,6 @@ var ButtonMap = map[int]int{
 	17: uinput.ButtonGamepad,
 }
 
-var HatMap = map[int]uinput.HatDirection{
-	// TODO: github.com/bendahl/uinput don't support trigger axis,
-	// so we nned to fork it and implement it some time in the future.
-	6: uinput.HatLeft,
-	7: uinput.HatRight,
-}
-
 func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 	for i, v := range dto.Buttons {
 		if v > 0 {
@@ -59,23 +52,17 @@ func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 			if ok {
 				g.Gamepad.ButtonDown(uinputButton)
 			}
-			uinputHat, ok := HatMap[i]
-			if ok {
-				g.Gamepad.HatPress(uinputHat)
-			}
 		} else {
 			uinputButton, ok := ButtonMap[i]
 			if ok {
 				g.Gamepad.ButtonUp(uinputButton)
 			}
-			uinputHat, ok := HatMap[i]
-			if ok {
-				g.Gamepad.HatRelease(uinputHat)
-			}
 		}
 	}
 	g.Gamepad.LeftStickMove(dto.Axes[0], dto.Axes[1])
 	g.Gamepad.RightStickMove(dto.Axes[2], dto.Axes[3])
+	g.Gamepad.LeftTriggerForce(dto.Buttons[6])
+	g.Gamepad.RightTriggerForce(dto.Buttons[7])
 }
 
 func (g *GamepadControl) Close() {
