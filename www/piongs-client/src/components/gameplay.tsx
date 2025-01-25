@@ -27,7 +27,9 @@ export default function Gameplay(props: {
     },
   });
 
-  const ws = useWebSocket(`${props.server}/webrtc`, {
+  // generate ws://xxx from http(s):// url
+  const wsUrl = props.server.replace(/^http/, "ws");
+  const ws = useWebSocket(`${wsUrl}/webrtc`, {
     onMessage: (message) => {
       const signal = JSON.parse(message.data);
       if (signal.sdp) {
