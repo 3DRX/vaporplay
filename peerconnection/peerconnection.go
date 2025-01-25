@@ -9,7 +9,6 @@ import (
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
-	"github.com/bendahl/uinput"
 	"github.com/pion/interceptor"
 
 	// "github.com/pion/interceptor/pkg/cc"
@@ -171,32 +170,7 @@ func (pc *PeerConnectionThread) Spin() {
 			slog.Warn("Failed to unmarshal datachannel message", "error", err)
 		}
 		slog.Info("datachannel message", "data", dto)
-		if dto.Buttons[0] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonSouth)
-		}
-		if dto.Buttons[1] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonWest)
-		}
-		if dto.Buttons[2] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonEast)
-		}
-		if dto.Buttons[3] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonNorth)
-		}
-		if dto.Buttons[12] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadUp)
-		}
-		if dto.Buttons[13] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadDown)
-		}
-		if dto.Buttons[14] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadLeft)
-		}
-		if dto.Buttons[15] != 0 {
-			pc.gamepadControl.Gamepad.ButtonPress(uinput.ButtonDpadRight)
-		}
-		pc.gamepadControl.Gamepad.RightStickMove(dto.Axes[2], dto.Axes[3])
-		pc.gamepadControl.Gamepad.LeftStickMove(dto.Axes[0], dto.Axes[1])
+		pc.gamepadControl.SendGamepadState(dto)
 	})
 
 	offer, err := pc.peerConnection.CreateOffer(nil)

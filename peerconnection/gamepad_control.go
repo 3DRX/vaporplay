@@ -20,3 +20,53 @@ func NewGamepadControl() (*GamepadControl, error) {
 		Gamepad: gamepad,
 	}, nil
 }
+
+var ButtonMap = map[int]int{
+	0: uinput.ButtonSouth,
+	1: uinput.ButtonWest,
+	2: uinput.ButtonEast,
+	3: uinput.ButtonNorth,
+
+	4: uinput.ButtonBumperLeft,
+	5: uinput.ButtonBumperRight,
+	// TODO: github.com/bendahl/uinput don't support trigger axis,
+	// so we nned to fork it and implement it some time in the future.
+	6: uinput.ButtonTriggerLeft,
+	7: uinput.ButtonTriggerRight,
+
+	8: uinput.ButtonSelect,
+	9: uinput.ButtonStart,
+
+	10: uinput.ButtonThumbLeft,
+	11: uinput.ButtonThumbRight,
+
+	12: uinput.ButtonDpadUp,
+	13: uinput.ButtonDpadDown,
+	14: uinput.ButtonDpadLeft,
+	15: uinput.ButtonDpadRight,
+
+	16: uinput.ButtonMode,
+	17: uinput.ButtonGamepad,
+}
+
+func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
+	for i, v := range dto.Buttons {
+		if v > 0 {
+			uinputButton, ok := ButtonMap[i]
+			if ok {
+				g.Gamepad.ButtonDown(uinputButton)
+			}
+		} else {
+			uinputButton, ok := ButtonMap[i]
+			if ok {
+				g.Gamepad.ButtonUp(uinputButton)
+			}
+		}
+	}
+	g.Gamepad.LeftStickMove(dto.Axes[0], dto.Axes[1])
+	g.Gamepad.RightStickMove(dto.Axes[2], dto.Axes[3])
+}
+
+func (g *GamepadControl) Close() {
+	g.Gamepad.Close()
+}
