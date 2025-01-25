@@ -36,12 +36,11 @@ func Initialize(gameCfg *config.GameConfig) {
 	if err != nil {
 		panic(err)
 	}
-	time.Sleep(10 * time.Second)
 	start := time.Now()
 	for {
 		// wait until the game window appears, timeout by 30 seconds
 		wm, err := openWindow(gameCfg.GameWindowName)
-		if err != nil {
+		if err != nil || wm == nil {
 			now := time.Now()
 			if now.Sub(start) > 30*time.Second {
 				panic("failed to find game window")
@@ -50,8 +49,18 @@ func Initialize(gameCfg *config.GameConfig) {
 			time.Sleep(1 * time.Second)
 			continue
 		}
+		defer wm.Close()
+		img, err := getShmImageFromWindowMatch(wm)
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		// some game have a small loading window, skip it
+		if img.img.height < 720 {
+			time.Sleep(1 * time.Second)
+			continue
+		}
 		slog.Info("found game window", "windowname", gameCfg.GameWindowName)
-		wm.Close()
 		break
 	}
 	slog.Info("initializing game capture", "windowname", gameCfg.GameWindowName)

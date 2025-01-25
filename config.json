@@ -37,6 +37,15 @@
                 "MainThread",
                 "upc.exe"
             ]
+        },
+        {
+            "game_id": "2878980",
+            "game_window_name": "NBA 2K25",
+            "game_display_name": "NBA 2K25",
+            "game_icon": "",
+            "game_process_name": [
+                "VCMain"
+            ]
         }
     ]
 }

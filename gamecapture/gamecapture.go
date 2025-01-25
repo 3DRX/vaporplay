@@ -266,14 +266,7 @@ type reader struct {
 	img    *shmImage
 }
 
-func newReader(windowname string) (*reader, error) {
-	cstr := C.CString(windowname)
-	defer C.free(unsafe.Pointer(cstr))
-	wm := (*windowmatch)(C.query_window_by_name(cstr))
-	if wm == nil {
-		return nil, errors.New("failed to open display")
-	}
-
+func getShmImageFromWindowMatch(wm *windowmatch) (*shmImage, error) {
 	if C.XShmQueryExtension(wm.display) == 0 {
 		return nil, errors.New("no XShm support")
 	}
@@ -281,6 +274,20 @@ func newReader(windowname string) (*reader, error) {
 	img, err := newShmImage(wm.display, wm.window)
 	if err != nil {
 		C.XCloseDisplay(wm.display)
+		return nil, err
+	}
+
+	return img, nil
+}
+
+func newReader(windowname string) (*reader, error) {
+	wm, err := openWindow(windowname)
+	if err != nil || wm == nil {
+		return nil, errors.New("failed to open display")
+	}
+
+	img, err := getShmImageFromWindowMatch(wm)
+	if err != nil {
 		return nil, err
 	}
 
