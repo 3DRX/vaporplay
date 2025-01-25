@@ -23,16 +23,12 @@ func NewGamepadControl() (*GamepadControl, error) {
 
 var ButtonMap = map[int]int{
 	0: uinput.ButtonSouth,
-	1: uinput.ButtonWest,
-	2: uinput.ButtonEast,
+	1: uinput.ButtonEast,
+	2: uinput.ButtonWest,
 	3: uinput.ButtonNorth,
 
 	4: uinput.ButtonBumperLeft,
 	5: uinput.ButtonBumperRight,
-	// TODO: github.com/bendahl/uinput don't support trigger axis,
-	// so we nned to fork it and implement it some time in the future.
-	6: uinput.ButtonTriggerLeft,
-	7: uinput.ButtonTriggerRight,
 
 	8: uinput.ButtonSelect,
 	9: uinput.ButtonStart,
@@ -49,6 +45,13 @@ var ButtonMap = map[int]int{
 	17: uinput.ButtonGamepad,
 }
 
+var HatMap = map[int]uinput.HatDirection{
+	// TODO: github.com/bendahl/uinput don't support trigger axis,
+	// so we nned to fork it and implement it some time in the future.
+	6: uinput.HatLeft,
+	7: uinput.HatRight,
+}
+
 func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 	for i, v := range dto.Buttons {
 		if v > 0 {
@@ -56,10 +59,18 @@ func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 			if ok {
 				g.Gamepad.ButtonDown(uinputButton)
 			}
+			uinputHat, ok := HatMap[i]
+			if ok {
+				g.Gamepad.HatPress(uinputHat)
+			}
 		} else {
 			uinputButton, ok := ButtonMap[i]
 			if ok {
 				g.Gamepad.ButtonUp(uinputButton)
+			}
+			uinputHat, ok := HatMap[i]
+			if ok {
+				g.Gamepad.HatRelease(uinputHat)
 			}
 		}
 	}
