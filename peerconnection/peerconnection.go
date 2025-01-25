@@ -187,14 +187,17 @@ func (pc *PeerConnectionThread) Spin() {
 	pc.peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		if s == webrtc.PeerConnectionStateClosed {
 			slog.Info("Peer connection closed")
-			// kill game process
-			args := []string{"killall", "-v", "-w", pc.gameConfig.GameProcessName}
-			// print command
-			slog.Info("Killing game process", "command", strings.Join(args, " "))
-			cmd := exec.Command(args[0], args[1:]...)
-			_, err := cmd.Output()
-			if err != nil {
-				panic(err)
+			// kill game processes
+			for _, processName := range pc.gameConfig.GameProcessName {
+				args := []string{"killall", "-v", "-w", processName}
+				// print command
+				slog.Info("Killing game process", "command", strings.Join(args, " "))
+				cmd := exec.Command(args[0], args[1:]...)
+				_, err := cmd.Output()
+				if err != nil {
+					slog.Error("Failed to kill game process", "error", err)
+					continue
+				}
 			}
 			// TODO: restore state to be able to connect with a client again
 			os.Exit(0)
