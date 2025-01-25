@@ -12,7 +12,7 @@ type GamepadDTO struct {
 }
 
 func NewGamepadControl() (*GamepadControl, error) {
-	gamepad, err := uinput.CreateGamepad("/dev/uinput", []byte("Xbox Wireless Controller"), 0x045e, 0x0b13)
+	gamepad, err := uinput.CreateGamepad("/dev/uinput", []byte("Piongs Virtual Controller"), 0x9999, 0x999)
 	if err != nil {
 		return nil, err
 	}
