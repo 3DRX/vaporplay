@@ -67,6 +67,21 @@ export default function ConnectionForm(props: {
                 <div className="grow" />
                 <FormMessage />
               </div>
+              <div className="text-xs">
+                When connecting to local server, add{" "}
+                <code className="mx-1 rounded-full bg-zinc-800 px-1 py-0.5">
+                  {"http://<ip>:<port>"}
+                </code>{" "}
+                and{" "}
+                <code className="mx-1 rounded-full bg-zinc-800 px-1 py-0.5">
+                  {"ws://<ip>:<port>"}
+                </code>{" "}
+                to "Insecure origions treated as secure" flag in{" "}
+                <a href="chrome://flags" className="underline">
+                  chrome://flags
+                </a>
+                .
+              </div>
             </FormItem>
           )}
         />
