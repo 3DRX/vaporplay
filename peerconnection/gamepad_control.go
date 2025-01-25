@@ -1,6 +1,6 @@
 package peerconnection
 
-import "github.com/ThomasT75/uinput"
+import "github.com/3DRX/piongs/uinput"
 
 type GamepadControl struct {
 	Gamepad uinput.Gamepad
@@ -24,8 +24,8 @@ func NewGamepadControl() (*GamepadControl, error) {
 var ButtonMap = map[int]int{
 	0: uinput.ButtonSouth,
 	1: uinput.ButtonEast,
-	2: uinput.ButtonWest,
-	3: uinput.ButtonNorth,
+	2: uinput.ButtonNorth,
+	3: uinput.ButtonWest,
 
 	4: uinput.ButtonBumperLeft,
 	5: uinput.ButtonBumperRight,
@@ -40,9 +40,6 @@ var ButtonMap = map[int]int{
 	13: uinput.ButtonDpadDown,
 	14: uinput.ButtonDpadLeft,
 	15: uinput.ButtonDpadRight,
-
-	16: uinput.ButtonMode,
-	17: uinput.ButtonGamepad,
 }
 
 func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
@@ -61,8 +58,8 @@ func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 	}
 	g.Gamepad.LeftStickMove(dto.Axes[0], dto.Axes[1])
 	g.Gamepad.RightStickMove(dto.Axes[2], dto.Axes[3])
-	g.Gamepad.LeftTriggerForce(dto.Buttons[6])
-	g.Gamepad.RightTriggerForce(dto.Buttons[7])
+	g.Gamepad.LeftTriggerForce(dto.Buttons[6]*2 - 1)
+	g.Gamepad.RightTriggerForce(dto.Buttons[7]*2 - 1)
 }
 
 func (g *GamepadControl) Close() {
