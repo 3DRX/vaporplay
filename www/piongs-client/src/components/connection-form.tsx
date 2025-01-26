@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -22,6 +21,7 @@ import { formSchema, FormType } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { GetGameInfos } from "@/lib/datafetch";
+import SelectItemWithImage from "./select-custom";
 
 export default function ConnectionForm(props: {
   onSubmit: (values: FormType) => void;
@@ -114,12 +114,15 @@ export default function ConnectionForm(props: {
                           </SelectTrigger>
                           <SelectContent>
                             {gamesQuery.data.map((game) => (
-                              <SelectItem
+                              <SelectItemWithImage
                                 key={game.game_id}
                                 value={game.game_id}
+                                src={`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.game_id}/header.jpg`}
+                                alt=""
+                                className="text-2xl"
                               >
                                 {game.game_display_name}
-                              </SelectItem>
+                              </SelectItemWithImage>
                             ))}
                           </SelectContent>
                         </Select>
