@@ -1,11 +1,16 @@
 import { z } from "zod";
 
+const killProcessCommandConfig = z.object({
+  flags: z.array(z.string()).or(z.null()),
+  process_name: z.string().nonempty(),
+});
+
 export const gameInfo = z.object({
   game_id: z.string().nonempty(),
   game_window_name: z.string().nonempty(),
   game_display_name: z.string().nonempty(),
   game_icon: z.string(), // the base64 encoded icon, optional
-  game_process_name: z.array(z.string().nonempty()),
+  end_game_commands: z.array(killProcessCommandConfig),
 });
 
 export const gameInfos = z.array(gameInfo);

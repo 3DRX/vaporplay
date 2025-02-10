@@ -57,7 +57,6 @@ func (s *SignalingThread) Spin() <-chan *config.GameConfig {
 			return
 		}
 		w.Write(jsonGames)
-		w.WriteHeader(http.StatusOK)
 		return
 	}))
 	mux.Handle("GET /webrtc", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

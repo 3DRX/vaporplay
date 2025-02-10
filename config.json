@@ -6,8 +6,10 @@
             "game_window_name": "Firewatch",
             "game_display_name": "Fire Watch",
             "game_icon": "",
-            "game_process_name": [
-                "fw.x86_64"
+            "end_game_commands": [
+                {
+                    "process_name": "fw.x86_64"
+                }
             ]
         },
         {
@@ -15,8 +17,10 @@
             "game_window_name": "Terraria",
             "game_display_name": "Terraria",
             "game_icon": "",
-            "game_process_name": [
-                "Main Thread"
+            "end_game_commands": [
+                {
+                    "process_name": "Main Thread"
+                }
             ]
         },
         {
@@ -24,8 +28,10 @@
             "game_window_name": "Dead Cells",
             "game_display_name": "Dead Cells",
             "game_icon": "",
-            "game_process_name": [
-                "deadcells"
+            "end_game_commands": [
+                {
+                    "process_name": "deadcells"
+                }
             ]
         },
         {
@@ -33,9 +39,13 @@
             "game_window_name": "Trackmania",
             "game_display_name": "Trackmania",
             "game_icon": "",
-            "game_process_name": [
-                "MainThread",
-                "upc.exe"
+            "end_game_commands": [
+                {
+                    "process_name": "MainThread"
+                },
+                {
+                    "process_name": "upc.exe"
+                }
             ]
         },
         {
@@ -43,8 +53,24 @@
             "game_window_name": "NBA 2K25",
             "game_display_name": "NBA 2K25",
             "game_icon": "",
-            "game_process_name": [
-                "VCMain"
+            "end_game_commands": [
+                {
+                    "process_name": "VCMain"
+                }
+            ]
+        },
+        {
+            "game_id": "391220",
+            "game_window_name": "Rise of the Tomb Raider",
+            "game_display_name": "Rise of the Tomb Raider",
+            "game_icon": "",
+            "end_game_commands": [
+                {
+                    "flags": [
+                        "-9"
+                    ],
+                    "process_name": "RiseOfTheTombRaider"
+                }
             ]
         }
     ]

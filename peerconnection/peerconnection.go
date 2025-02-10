@@ -188,8 +188,14 @@ func (pc *PeerConnectionThread) Spin() {
 		if s == webrtc.PeerConnectionStateClosed {
 			slog.Info("Peer connection closed")
 			// kill game processes
-			for _, processName := range pc.gameConfig.GameProcessName {
-				args := []string{"killall", "-v", "-w", processName}
+			for _, processConfig := range pc.gameConfig.EndGameCommands {
+				args := []string{"killall"}
+				if len(processConfig.Flags) != 0 {
+					args = append(args, processConfig.Flags...)
+				} else {
+					args = append(args, "-v", "-w")
+				}
+				args = append(args, processConfig.ProcessName)
 				// print command
 				slog.Info("Killing game process", "command", strings.Join(args, " "))
 				cmd := exec.Command(args[0], args[1:]...)

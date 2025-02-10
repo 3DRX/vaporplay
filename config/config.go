@@ -12,12 +12,17 @@ import (
 	"strings"
 )
 
+type KillProcessCommandConfig struct {
+	Flags       []string `json:"flags"`
+	ProcessName string   `json:"process_name"`
+}
+
 type GameConfig struct {
-	GameId          string   `json:"game_id"`
-	GameWindowName  string   `json:"game_window_name"`
-	GameDisplayName string   `json:"game_display_name"`
-	GameIcon        string   `json:"game_icon"`
-	GameProcessName []string `json:"game_process_name"`
+	GameId          string                     `json:"game_id"`
+	GameWindowName  string                     `json:"game_window_name"`
+	GameDisplayName string                     `json:"game_display_name"`
+	GameIcon        string                     `json:"game_icon"`
+	EndGameCommands []KillProcessCommandConfig `json:"end_game_commands"`
 }
 
 type Config struct {

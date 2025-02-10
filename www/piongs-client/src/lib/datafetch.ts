@@ -17,6 +17,10 @@ async function f(server: string, method: string, route: string, body?: any) {
 export async function GetGameInfos(server: string) {
   const r = await f(server, "GET", "games");
   const data = await r.json();
-  const response = gameInfos.parse(data);
-  return response;
+  try {
+    const response = gameInfos.parse(data);
+    return response;
+  } catch (e) {
+    console.error(e);
+  }
 }
