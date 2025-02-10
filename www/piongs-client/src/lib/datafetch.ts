@@ -22,5 +22,6 @@ export async function GetGameInfos(server: string) {
     return response;
   } catch (e) {
     console.error(e);
+    throw e;
   }
 }
