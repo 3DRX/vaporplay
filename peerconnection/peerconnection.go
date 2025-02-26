@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/3DRX/piongs/codec/ffmpeg"
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/pion/interceptor"
@@ -14,7 +15,7 @@ import (
 	// "github.com/pion/interceptor/pkg/cc"
 	// "github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/mediadevices"
-	"github.com/pion/mediadevices/pkg/codec/vpx"
+	// "github.com/pion/mediadevices/pkg/codec/vpx"
 	"github.com/pion/mediadevices/pkg/prop"
 	"github.com/pion/webrtc/v4"
 )
@@ -48,7 +49,7 @@ func NewPeerConnectionThread(
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 	selectedGame *config.GameConfig,
 ) *PeerConnectionThread {
-	params, err := vpx.NewVP8Params()
+	params, err := ffmpeg.NewVP8Params()
 	if err != nil {
 		panic(err)
 	}
