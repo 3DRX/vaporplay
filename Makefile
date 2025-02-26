@@ -31,5 +31,6 @@ endif
 
 clean:
 	rm -f gamecapture/*.so piongs
+	go clean -cache
 
 .PHONY: clean piongs install-ffmpeg

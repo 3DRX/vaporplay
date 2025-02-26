@@ -49,11 +49,11 @@ func NewPeerConnectionThread(
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 	selectedGame *config.GameConfig,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewVP8Params()
+	params, err := ffmpeg.NewH264Params()
 	if err != nil {
 		panic(err)
 	}
-	params.BitRate = 5_000_000
+	params.BitRate = 20_000_000
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
 	)
