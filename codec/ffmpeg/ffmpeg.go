@@ -89,11 +89,20 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	codecCtx.SetTimeBase(astiav.NewRational(1, int(p.FrameRate)))
 	codecCtx.SetFramerate(codecCtx.TimeBase().Invert())
 	codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
-	// codecCtx.SetBitRate(int64(params.BitRate))
+	codecCtx.SetBitRate(int64(params.BitRate))
 	// codecCtx.SetGopSize(params.KeyFrameInterval)
 	codecCtx.SetMaxBFrames(0)
-	codecCtx.PrivateData().Options().Set("zerolatency", "1", 0)
-	codecCtx.PrivateData().Options().Set("delay", "0", 0)
+	codecOptions := codecCtx.PrivateData().Options()
+	codecOptions.Set("zerolatency", "1", 0)
+	codecOptions.Set("delay", "0", 0)
+	// codecOptions.Set("tune", "ull", 0)
+	codecOptions.Set("preset", "p1", 0)
+	codecOptions.Set("rc", "vbr", 0)
+	// codecOptions.Set("cbr", "1", 0)
+	// codecOptions.Set("qp", "51", 0)
+	for i, li := range codecOptions.List() {
+		fmt.Printf("li %d: %s\n", i, li.Name())
+	}
 
 	// Create hardware frames context
 	hwFramesCtx := astiav.AllocHardwareFramesContext(hwDevice)
@@ -106,7 +115,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	hwFramesCtx.SetWidth(p.Width)
 	hwFramesCtx.SetHeight(p.Height)
 	hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
-	hwFramesCtx.SetSoftwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatYuv420P))
+	hwFramesCtx.SetSoftwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatRgba))
 	hwFramesCtx.SetInitialPoolSize(20)
 
 	err = hwFramesCtx.Initialize()
@@ -129,7 +138,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 
 	softwareFrame.SetWidth(p.Width)
 	softwareFrame.SetHeight(p.Height)
-	softwareFrame.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatYuv420P))
+	softwareFrame.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatRgba))
 
 	err = softwareFrame.AllocBuffer(0)
 	if err != nil {
@@ -159,7 +168,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 		packet:      packet,
 		width:       p.Width,
 		height:      p.Height,
-		r:           video.ToI420(r),
+		r:           r,
 	}, nil
 }
 
@@ -233,31 +242,10 @@ func (e *encoder) ForceKeyFrame() error {
 
 // SetBitrate updates the encoder's bitrate
 func (e *encoder) SetBitrate(bitrate int64) error {
-	// e.mu.Lock()
-	// defer e.mu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-	// // Flush the encoder
-	// if err := e.codecCtx.SendFrame(nil); err != nil {
-	//     return fmt.Errorf("failed to flush encoder: %w", err)
-	// }
-
-	// for {
-	//     err := e.codecCtx.ReceivePacket(e.packet)
-	//     if err != nil {
-	//         break
-	//     }
-	//     e.packet.Unref()
-	// }
-
-	// // Set new bitrate
-	// e.codecCtx.SetBitRate(bitrate)
-
-	// // Some codecs might require additional parameters to be updated
-	// if e.codec.Name() == "libx264" || e.codec.Name() == "h264" {
-	//     // Update rate control buffer size and max rate for x264
-	//     e.codecCtx.SetRCBufferSize(int(bitrate * 2))
-	//     e.codecCtx.SetRCMaxRate(bitrate)
-	// }
+	e.codecCtx.SetBitRate(bitrate)
 
 	return nil
 }

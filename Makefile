@@ -9,7 +9,7 @@ patchPath=
 configure=
 
 piongs: gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
-	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -o piongs
+	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o piongs
 
 gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
 	cd gamecapture && $(CC) -shared -o libwindowmatch.so -fPIC window_match.c $(FLAGS)
