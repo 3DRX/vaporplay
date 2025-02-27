@@ -8,6 +8,11 @@ The server can only be compiled & run on Linux using X11 and have steam installe
 Currently, only transportation of game video and controller inputs is implemented.
 Due to the proof of concept & test bed nature of this project, other types of payload is not planned for now.
 The control input transportation and processing is tested on Xbox Wireless Controller.
+Also, for the nvenc hardware encoder to work, a nvidia graphics card and it's driver is required.
+
+### Build FFmpeg from source
+
+This project's Makefile use a FFmpeg build from source, but doesn't handle the dependency installation and configuration for you.
 
 ## Configuration
 
@@ -37,4 +42,6 @@ piongs-client includes a controller testing tool, at https://piongs-client.3drx.
 ## Acknowledgements
 
 1. https://github.com/pion
-2. github.com/bendahl/uinput and it's fork github.com/ThomasT75/uinput for the uinput implementation in go.
+2. github.com/bendahl/uinput and it's fork github.com/ThomasT75/uinput for the uinput implementation in go
+3. https://github.com/asticode/go-astiav for the FFmpeg binding
+4. FFmpeg
