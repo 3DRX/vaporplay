@@ -170,7 +170,7 @@ func (pc *PeerConnectionThread) Spin() {
 		if err != nil {
 			slog.Warn("Failed to unmarshal datachannel message", "error", err)
 		}
-		slog.Info("datachannel message", "data", dto)
+		// slog.Info("datachannel message", "data", dto)
 		pc.gamepadControl.SendGamepadState(dto)
 	})
 
