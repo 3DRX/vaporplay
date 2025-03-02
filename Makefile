@@ -1,5 +1,5 @@
 CC := gcc
-FLAGS := -lX11 -lXext
+FLAGS := -lX11 -lXext -O3
 version=n7.0
 srcPath=tmp/$(version)/src
 CGO_CFLAGS := -I$(CURDIR)/gamecapture -I$(CURDIR)/tmp/$(version)/include/
