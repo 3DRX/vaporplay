@@ -27,7 +27,7 @@ type encoder struct {
 	r           video.Reader
 
 	// for stats
-	frameSizeChan chan int
+	statsItemChan chan StatsItem
 
 	mu     sync.Mutex
 	closed bool
@@ -63,7 +63,7 @@ func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (cod
 
 func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	if p.FrameRate == 0 {
-		p.FrameRate = 60
+		p.FrameRate = 90
 	}
 	slog.Info("creating new encoder", "params", params, "props", p)
 	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelDebug))
@@ -95,16 +95,16 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	codecCtx.SetFramerate(codecCtx.TimeBase().Invert())
 	codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
 	codecCtx.SetBitRate(int64(params.BitRate))
-	// codecCtx.SetGopSize(params.KeyFrameInterval)
+	codecCtx.SetGopSize(params.KeyFrameInterval)
 	codecCtx.SetMaxBFrames(0)
 	codecOptions := codecCtx.PrivateData().Options()
 	codecOptions.Set("zerolatency", "1", 0)
 	codecOptions.Set("delay", "0", 0)
 	// codecOptions.Set("tune", "ull", 0)
 	codecOptions.Set("preset", "p1", 0)
-	codecOptions.Set("rc", "vbr", 0)
+	codecOptions.Set("rc", "cbr", 0)
 	// codecOptions.Set("cbr", "1", 0)
-	// codecOptions.Set("qp", "51", 0)
+	// codecOptions.Set("qp", "5", 0)
 	for i, li := range codecOptions.List() {
 		fmt.Printf("li %d: %s\n", i, li.Name())
 	}
@@ -164,8 +164,8 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 		return nil, fmt.Errorf("failed to allocate packet")
 	}
 
-	frameSizeChan := make(chan int, 100)
-	go StatsThread(frameSizeChan)
+	statsItemChan := make(chan StatsItem, 100)
+	go StatsThread(statsItemChan)
 
 	return &encoder{
 		codec:         codec,
@@ -177,7 +177,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 		width:         p.Width,
 		height:        p.Height,
 		r:             r,
-		frameSizeChan: frameSizeChan,
+		statsItemChan: statsItemChan,
 	}, nil
 }
 
@@ -224,7 +224,9 @@ func (e *encoder) Read() ([]byte, func(), error) {
 		break
 	}
 
-	e.frameSizeChan <- e.packet.Size()
+	e.statsItemChan <- StatsItem{
+		FrameSize: e.packet.Size(),
+	}
 	data := make([]byte, e.packet.Size())
 	copy(data, e.packet.Data())
 	e.packet.Unref()
@@ -270,13 +272,17 @@ func (e *encoder) Close() error {
 	if e.codecCtx != nil {
 		e.codecCtx.Free()
 	}
-	if e.frameSizeChan != nil {
-		close(e.frameSizeChan)
+	if e.statsItemChan != nil {
+		close(e.statsItemChan)
 	}
 	return nil
 }
 
-func StatsThread(frameSizeChan chan int) {
+type StatsItem struct {
+	FrameSize int
+}
+
+func StatsThread(frameSizeChan chan StatsItem) {
 	// open file for writing
 	f, err := os.Create("frame_size.csv")
 	if err != nil {
@@ -286,23 +292,24 @@ func StatsThread(frameSizeChan chan int) {
 	w.WriteString("frame_size\n")
 	defer f.Close()
 	index := 0
-	var frameSize int
+	var statsItem StatsItem
 	for {
 		select {
-		case frameSize = <-frameSizeChan:
-			if frameSize == 0 {
+		case statsItem = <-frameSizeChan:
+			if statsItem.FrameSize == 0 {
 				// there will be mutiple 0s when the stream is stopped,
 				// it's safe to just ignore them
 				continue
 			}
-			slog.Info("frame size", "size", frameSize)
-			_, err := w.WriteString(fmt.Sprintf("%d\n", frameSize))
+			// slog.Info("frame size", "size", frameSize)
+			_, err := w.WriteString(fmt.Sprintf("%d\n", statsItem.FrameSize))
 			if err != nil {
 				slog.Error("failed to write frame size to file", "error", err)
 			}
-			if index%100 == 0 {
+			if index%270 == 0 {
 				w.Flush()
 			}
+			index++
 		}
 	}
 }
