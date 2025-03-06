@@ -1,10 +1,12 @@
 package ffmpeg
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/asticode/go-astiav"
@@ -23,6 +25,9 @@ type encoder struct {
 	width       int
 	height      int
 	r           video.Reader
+
+	// for stats
+	frameSizeChan chan int
 
 	mu     sync.Mutex
 	closed bool
@@ -159,16 +164,20 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 		return nil, fmt.Errorf("failed to allocate packet")
 	}
 
+	frameSizeChan := make(chan int, 100)
+	go StatsThread(frameSizeChan)
+
 	return &encoder{
-		codec:       codec,
-		codecCtx:    codecCtx,
-		hwFramesCtx: hwFramesCtx,
-		frame:       softwareFrame,
-		hwFrame:     hardwareFrame,
-		packet:      packet,
-		width:       p.Width,
-		height:      p.Height,
-		r:           r,
+		codec:         codec,
+		codecCtx:      codecCtx,
+		hwFramesCtx:   hwFramesCtx,
+		frame:         softwareFrame,
+		hwFrame:       hardwareFrame,
+		packet:        packet,
+		width:         p.Width,
+		height:        p.Height,
+		r:             r,
+		frameSizeChan: frameSizeChan,
 	}, nil
 }
 
@@ -215,6 +224,7 @@ func (e *encoder) Read() ([]byte, func(), error) {
 		break
 	}
 
+	e.frameSizeChan <- e.packet.Size()
 	data := make([]byte, e.packet.Size())
 	copy(data, e.packet.Data())
 	e.packet.Unref()
@@ -260,5 +270,39 @@ func (e *encoder) Close() error {
 	if e.codecCtx != nil {
 		e.codecCtx.Free()
 	}
+	if e.frameSizeChan != nil {
+		close(e.frameSizeChan)
+	}
 	return nil
+}
+
+func StatsThread(frameSizeChan chan int) {
+	// open file for writing
+	f, err := os.Create("frame_size.csv")
+	if err != nil {
+		panic(err)
+	}
+	w := bufio.NewWriter(f)
+	w.WriteString("frame_size\n")
+	defer f.Close()
+	index := 0
+	var frameSize int
+	for {
+		select {
+		case frameSize = <-frameSizeChan:
+			if frameSize == 0 {
+				// there will be mutiple 0s when the stream is stopped,
+				// it's safe to just ignore them
+				continue
+			}
+			slog.Info("frame size", "size", frameSize)
+			_, err := w.WriteString(fmt.Sprintf("%d\n", frameSize))
+			if err != nil {
+				slog.Error("failed to write frame size to file", "error", err)
+			}
+			if index%100 == 0 {
+				w.Flush()
+			}
+		}
+	}
 }
