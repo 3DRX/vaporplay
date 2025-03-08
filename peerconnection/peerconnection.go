@@ -46,7 +46,7 @@ func NewPeerConnectionThread(
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 	selectedGame *config.GameConfig,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewAV1Params()
+	params, err := ffmpeg.NewH264Params()
 	if err != nil {
 		panic(err)
 	}
