@@ -53,6 +53,7 @@ export default function Gameplay(props: {
     resolution: "0x0",
     totalInterFrameDelay: 0, // s
     interFrameDelay: 0,
+    codec: "",
   });
 
   // Stats collection interval
@@ -62,10 +63,16 @@ export default function Gameplay(props: {
 
       const stats = await peerConnectionRef.current.getStats();
       for (const [_, stat] of stats.entries()) {
-        // @ts-ignore
+        if (stat.type === "codec" && stat.mimeType.startsWith("video")) {
+          setStats((prev) => ({
+            ...prev,
+            codec: stat.mimeType,
+          }));
+        }
         if (stat.type === "inbound-rtp" && stat.kind === "video") {
           console.log(stat);
           setStats((prev) => ({
+            ...prev,
             timestamp: stat.timestamp,
             bytesReceived: stat.bytesReceived,
             bitrate:
@@ -174,6 +181,10 @@ export default function Gameplay(props: {
           <div className="flex flex-col">
             <span className="text-xs text-white/60">Resolution</span>
             <span>{stats.resolution}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-white/60">Codec</span>
+            <span>{stats.codec}</span>
           </div>
         </div>
         <Button
