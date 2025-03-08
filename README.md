@@ -2,6 +2,8 @@
 
 Cloud-game server & client based on Linux and pion webrtc.
 
+> This project is not production-ready, it's only ment to be used for reasearch and testing purpose.
+
 ## Environment & Limitations
 
 The server can only be compiled & run on Linux using X11 and have steam installed, the client runs anywhere at https://piongs-client.3drx.top.
