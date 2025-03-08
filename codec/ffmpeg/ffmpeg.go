@@ -18,15 +18,16 @@ import (
 )
 
 type encoder struct {
-	codec       *astiav.Codec
-	codecCtx    *astiav.CodecContext
-	hwFramesCtx *astiav.HardwareFramesContext
-	frame       *astiav.Frame
-	hwFrame     *astiav.Frame
-	packet      *astiav.Packet
-	width       int
-	height      int
-	r           video.Reader
+	codec          *astiav.Codec
+	codecCtx       *astiav.CodecContext
+	hwFramesCtx    *astiav.HardwareFramesContext
+	frame          *astiav.Frame
+	hwFrame        *astiav.Frame
+	packet         *astiav.Packet
+	width          int
+	height         int
+	r              video.Reader
+	nextIsKeyFrame bool
 
 	// for stats
 	statsItemChan chan StatsItem
@@ -258,16 +259,17 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	go StatsThread(statsItemChan)
 
 	return &encoder{
-		codec:         codec,
-		codecCtx:      codecCtx,
-		hwFramesCtx:   hwFramesCtx,
-		frame:         softwareFrame,
-		hwFrame:       hardwareFrame,
-		packet:        packet,
-		width:         p.Width,
-		height:        p.Height,
-		r:             r,
-		statsItemChan: statsItemChan,
+		codec:          codec,
+		codecCtx:       codecCtx,
+		hwFramesCtx:    hwFramesCtx,
+		frame:          softwareFrame,
+		hwFrame:        hardwareFrame,
+		packet:         packet,
+		width:          p.Width,
+		height:         p.Height,
+		r:              r,
+		nextIsKeyFrame: false,
+		statsItemChan:  statsItemChan,
 	}, nil
 }
 
@@ -288,6 +290,15 @@ func (e *encoder) Read() ([]byte, func(), error) {
 		return nil, func() {}, err
 	}
 	defer release()
+
+	if e.nextIsKeyFrame {
+		e.frame.SetPictureType(astiav.PictureType(astiav.PictureTypeI))
+		e.hwFrame.SetPictureType(astiav.PictureType(astiav.PictureTypeI))
+		e.nextIsKeyFrame = false
+	} else {
+		e.frame.SetPictureType(astiav.PictureType(astiav.PictureTypeNone))
+		e.hwFrame.SetPictureType(astiav.PictureType(astiav.PictureTypeNone))
+	}
 
 	err = e.frame.Data().FromImage(img)
 	if err != nil {
@@ -326,19 +337,10 @@ func (e *encoder) Read() ([]byte, func(), error) {
 
 // ForceKeyFrame forces the next frame to be encoded as a keyframe
 func (e *encoder) ForceKeyFrame() error {
-	// e.mu.Lock()
-	// defer e.mu.Unlock()
-
-	// // Set frame properties to force a keyframe
-	// if err := e.frame.SetFlags(e.frame.Flags() | astiav.FrameFlagKey); err != nil {
-	//     return fmt.Errorf("failed to set keyframe flag: %w", err)
-	// }
-
-	// // Set frame picture type to I-frame
-	// if err := e.frame.SetPictType(astiav.PictTypeI); err != nil {
-	//     return fmt.Errorf("failed to set picture type: %w", err)
-	// }
-
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	slog.Info("forcing key frame")
+	e.nextIsKeyFrame = true
 	return nil
 }
 

@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GamepadTest from "@/components/gamepad-test";
 import { BrowserRouter, Link, Route, Routes } from "react-router";
 import { Button } from "./components/ui/button";
+import CodecCapabilities from "./components/codec-capabilities";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ createRoot(document.getElementById("root")!).render(
           <Routes>
             <Route path="/" element={<App />} />
             <Route path="/gamepad-test" element={<GamepadTest />} />
+            <Route path="/codec-capabilities" element={<CodecCapabilities />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
@@ -70,6 +72,11 @@ function App() {
               <li>
                 <Button variant="link" className="underline">
                   <Link to="/gamepad-test">Gamepad Test</Link>
+                </Button>
+              </li>
+              <li>
+                <Button variant="link" className="underline">
+                  <Link to="/codec-capabilities">Codec Capabilities</Link>
                 </Button>
               </li>
             </ul>
