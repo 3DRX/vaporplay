@@ -134,13 +134,11 @@ func NewRTPAV1Codec(clockrate uint32) *codec.RTPCodec {
 	return &codec.RTPCodec{
 		RTPCodecParameters: webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:    webrtc.MimeTypeAV1,
-				ClockRate:   90000,
-				Channels:    0,
-				SDPFmtpLine: "level-idx=5;profile=0;tier=0",
-				RTCPFeedback: []webrtc.RTCPFeedback{
-					{Type: "nack", Parameter: ""},
-				},
+				MimeType:     webrtc.MimeTypeAV1,
+				ClockRate:    90000,
+				Channels:     0,
+				SDPFmtpLine:  "level-idx=5;profile=0;tier=0",
+				RTCPFeedback: nil,
 			},
 			PayloadType: 100,
 		},
