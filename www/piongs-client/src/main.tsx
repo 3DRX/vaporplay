@@ -52,7 +52,7 @@ function App() {
   const onExit = useCallback(() => setServer(""), []);
 
   return (
-    <div className="min-h-screen">
+    <div className="h-svh">
       {server.length !== 0 && game ? (
         <Gameplay server={server} game={game} onExit={onExit} />
       ) : (

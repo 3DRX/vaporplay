@@ -157,7 +157,7 @@ export default function Gameplay(props: {
   };
 
   return (
-    <div className="relative h-screen w-screen">
+    <div className="h-svh touch-none">
       {/* Video takes up full screen */}
       <video
         ref={videoRef}
@@ -167,7 +167,7 @@ export default function Gameplay(props: {
       />
 
       {/* Floating top bar */}
-      <div className="absolute left-0 right-0 top-0 flex items-center justify-between bg-black/50 px-4 backdrop-blur-sm">
+      <div className="absolute left-0 right-0 top-0 flex items-center justify-between bg-black/50 px-4 backdrop-blur-sm touch-none">
         <h1 className="text-lg font-bold text-white">PionGS Gameplay</h1>
         <div className="flex space-x-4 text-sm text-white/80">
           <div className="flex flex-col">
