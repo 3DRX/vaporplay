@@ -148,6 +148,7 @@ func NewRTPAV1Codec(clockrate uint32) *codec.RTPCodec {
 
 func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	if p.FrameRate == 0 {
+		slog.Warn("frame rate is 0, setting to 90")
 		p.FrameRate = 90
 	}
 	slog.Info("creating new encoder", "params", params, "props", p)
