@@ -12,10 +12,7 @@ import (
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/pion/interceptor"
 
-	// "github.com/pion/interceptor/pkg/cc"
-	// "github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/mediadevices"
-	// "github.com/pion/mediadevices/pkg/codec/vpx"
 	"github.com/pion/mediadevices/pkg/prop"
 	"github.com/pion/webrtc/v4"
 )
@@ -49,11 +46,11 @@ func NewPeerConnectionThread(
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 	selectedGame *config.GameConfig,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewH264Params()
+	params, err := ffmpeg.NewAV1Params()
 	if err != nil {
 		panic(err)
 	}
-	params.BitRate = 20_000_000
+	params.BitRate = 5_000_000
 	params.KeyFrameInterval = 270
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
@@ -95,13 +92,6 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 
-	// estimator := <-estimatorChan
-
-	// // estimator.GetTargetBitrate()
-	// estimator.OnTargetBitrateChange(func(bitrate int) {
-	// 	slog.Info("Target bitrate changed", "bitrate", bitrate)
-	// })
-
 	gamecapture.Initialize(selectedGame)
 
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
@@ -130,6 +120,20 @@ func NewPeerConnectionThread(
 		}
 		slog.Info("add video track success")
 	}
+
+	// estimator := <-estimatorChan
+
+	// estimator.OnTargetBitrateChange(func(bitrate int) {
+	// 	slog.Info("Target bitrate changed", "bitrate", bitrate)
+	// 	if encoderController == nil {
+	// 		return
+	// 	}
+	// 	bitrateController, ok := encoderController.(codec.BitRateController)
+	// 	if !ok {
+	// 		return
+	// 	}
+	// 	bitrateController.SetBitRate(bitrate)
+	// })
 
 	gamepadControl, err := NewGamepadControl()
 	if err != nil {

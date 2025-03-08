@@ -13,6 +13,8 @@ import (
 	"github.com/pion/mediadevices/pkg/codec"
 	"github.com/pion/mediadevices/pkg/io/video"
 	"github.com/pion/mediadevices/pkg/prop"
+	"github.com/pion/rtp/codecs"
+	"github.com/pion/webrtc/v4"
 )
 
 type encoder struct {
@@ -50,7 +52,6 @@ func (p *H264Params) RTPCodec() *codec.RTPCodec {
 	return codec.NewRTPH264Codec(90000)
 }
 
-// BuildVideoEncoder builds VP8 encoder with given params
 func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
 	readCloser, err := newEncoder(r, property, p.Params)
 	if err != nil {
@@ -59,6 +60,92 @@ func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (cod
 	}
 	slog.Info("sucsessfully created new encoder")
 	return readCloser, nil
+}
+
+type H265Params struct {
+	Params
+}
+
+func NewH265Params() (H265Params, error) {
+	return H265Params{
+		Params: Params{
+			codecName: "hevc_nvenc",
+		},
+	}, nil
+}
+
+func (p *H265Params) RTPCodec() *codec.RTPCodec {
+	return NewRTPH265Codec(90000)
+}
+
+func (p *H265Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+	readCloser, err := newEncoder(r, property, p.Params)
+	if err != nil {
+		slog.Error("failed to create new encoder", "error", err)
+		return nil, err
+	}
+	slog.Info("sucsessfully created new encoder")
+	return readCloser, nil
+}
+
+type AV1Params struct {
+	Params
+}
+
+func NewAV1Params() (AV1Params, error) {
+	return AV1Params{
+		Params: Params{
+			codecName: "av1_nvenc",
+		},
+	}, nil
+}
+
+func (p *AV1Params) RTPCodec() *codec.RTPCodec {
+	return NewRTPAV1Codec(90000)
+}
+
+func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+	readCloser, err := newEncoder(r, property, p.Params)
+	if err != nil {
+		slog.Error("failed to create new encoder", "error", err)
+		return nil, err
+	}
+	slog.Info("sucsessfully created new encoder")
+	return readCloser, nil
+}
+
+func NewRTPH265Codec(clockrate uint32) *codec.RTPCodec {
+	return &codec.RTPCodec{
+		RTPCodecParameters: webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:     webrtc.MimeTypeH265,
+				ClockRate:    90000,
+				Channels:     0,
+				SDPFmtpLine:  "",
+				RTCPFeedback: nil,
+			},
+			PayloadType: 125,
+		},
+		Payloader: &codecs.H265Payloader{},
+	}
+}
+
+func NewRTPAV1Codec(clockrate uint32) *codec.RTPCodec {
+	return &codec.RTPCodec{
+		RTPCodecParameters: webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    webrtc.MimeTypeAV1,
+				ClockRate:   90000,
+				Channels:    0,
+				SDPFmtpLine: "level-idx=5;profile=0;tier=0",
+				RTCPFeedback: []webrtc.RTCPFeedback{
+					{Type: "nack", Parameter: ""},
+				},
+			},
+			PayloadType: 100,
+		},
+		Payloader: &codecs.AV1Payloader{},
+	}
 }
 
 func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
@@ -96,11 +183,15 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
 	codecCtx.SetBitRate(int64(params.BitRate))
 	codecCtx.SetGopSize(params.KeyFrameInterval)
-	codecCtx.SetMaxBFrames(0)
 	codecOptions := codecCtx.PrivateData().Options()
+	switch params.codecName {
+	case "av1_nvenc":
+		codecCtx.SetProfile(astiav.Profile(astiav.ProfileAv1Main))
+		codecOptions.Set("tier", "0", 0)
+	}
 	codecOptions.Set("zerolatency", "1", 0)
 	codecOptions.Set("delay", "0", 0)
-	// codecOptions.Set("tune", "ull", 0)
+	codecOptions.Set("tune", "ull", 0)
 	codecOptions.Set("preset", "p1", 0)
 	codecOptions.Set("rc", "cbr", 0)
 	// codecOptions.Set("cbr", "1", 0)
