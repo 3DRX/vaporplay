@@ -212,7 +212,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	hwFramesCtx.SetHeight(p.Height)
 	hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
 	hwFramesCtx.SetSoftwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatRgba))
-	hwFramesCtx.SetInitialPoolSize(20)
+	// hwFramesCtx.SetInitialPoolSize(20)
 
 	err = hwFramesCtx.Initialize()
 	if err != nil {
