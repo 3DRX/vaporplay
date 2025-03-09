@@ -10,6 +10,7 @@ export default function Gameplay(props: {
   game: GameInfoType;
   onExit?: () => void;
 }) {
+  const [showTopBar, setShowTopBar] = useState(true);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -157,47 +158,56 @@ export default function Gameplay(props: {
   };
 
   return (
-    <div className="h-svh touch-none">
+    <div className="max-h-svh">
+      {/* A fullscreen transparent div on top that captures onClick event */}
+      <div
+        className="absolute inset-0 z-40"
+        onClick={() => setShowTopBar((prev) => !prev)}
+      />
+
       {/* Video takes up full screen */}
       <video
         ref={videoRef}
         autoPlay
         muted
-        className="absolute inset-0 mb-0 mt-auto h-auto w-full object-cover"
+        playsInline
+        className="absolute inset-0 mx-auto mb-0 mt-auto h-full max-h-svh w-full touch-none object-contain"
       />
 
       {/* Floating top bar */}
-      <div className="absolute left-0 right-0 top-0 flex items-center justify-between bg-black/50 px-4 backdrop-blur-sm touch-none">
-        <h1 className="text-lg font-bold text-white">PionGS Gameplay</h1>
-        <div className="flex space-x-4 text-sm text-white/80">
-          <div className="flex flex-col">
-            <span className="text-xs text-white/60">Bitrate</span>
-            <span>{stats.bitrate.toFixed(2)} Mbps</span>
+      {showTopBar && (
+        <div className="absolute left-0 right-0 top-0 z-50 flex touch-none items-center justify-between bg-black/50 px-4 backdrop-blur-sm">
+          <h1 className="text-lg font-bold text-white">PionGS Gameplay</h1>
+          <div className="flex space-x-4 text-sm text-white/80">
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Bitrate</span>
+              <span>{stats.bitrate.toFixed(2)} Mbps</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Frame Rate</span>
+              <span>{stats.frameRate} fps</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Resolution</span>
+              <span>{stats.resolution}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Codec</span>
+              <span>{stats.codec}</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-white/60">Frame Rate</span>
-            <span>{stats.frameRate} fps</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-white/60">Resolution</span>
-            <span>{stats.resolution}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-white/60">Codec</span>
-            <span>{stats.codec}</span>
-          </div>
+          <Button
+            variant="link"
+            onClick={() => {
+              peerConnectionRef.current?.close();
+              props.onExit && props.onExit();
+            }}
+            className="h-5 text-white transition-colors hover:text-gray-300"
+          >
+            Exit
+          </Button>
         </div>
-        <Button
-          variant="link"
-          onClick={() => {
-            peerConnectionRef.current?.close();
-            props.onExit && props.onExit();
-          }}
-          className="h-5 text-white transition-colors hover:text-gray-300"
-        >
-          Exit
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

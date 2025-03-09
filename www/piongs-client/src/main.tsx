@@ -17,6 +17,7 @@ import GamepadTest from "@/components/gamepad-test";
 import { BrowserRouter, Link, Route, Routes } from "react-router";
 import { Button } from "./components/ui/button";
 import CodecCapabilities from "./components/codec-capabilities";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
 const queryClient = new QueryClient();
 
@@ -37,8 +38,11 @@ createRoot(document.getElementById("root")!).render(
 );
 
 function App() {
-  const [server, setServer] = useState("");
+  const [server, setServer] = useLocalStorage("piongs-client-server", "");
   const [game, setGame] = useState<GameInfoType | null>(null);
+  // const [config, setConfig] = useLocalStorage<Config>("piongs-client-config", {
+  //   showDebugInfo: true,
+  // });
 
   function onSubmit(values: FormType) {
     if (values.server) {
@@ -52,7 +56,7 @@ function App() {
   const onExit = useCallback(() => setServer(""), []);
 
   return (
-    <div className="h-svh">
+    <div className="max-h-svh">
       {server.length !== 0 && game ? (
         <Gameplay server={server} game={game} onExit={onExit} />
       ) : (

@@ -43,3 +43,7 @@ export type GamepadStateDto = {
   b: number[]; // buttons, > 0 is pressed, 0 is unpressed
   a: number[]; // axes
 };
+
+export type Config = {
+  showDebugInfo: boolean;
+};
