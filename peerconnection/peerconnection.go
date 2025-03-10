@@ -55,7 +55,7 @@ func NewPeerConnectionThread(
 		panic(err)
 	}
 	params.BitRate = 10_000_000
-	params.KeyFrameInterval = 270
+	params.KeyFrameInterval = -1
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
 	)
@@ -69,8 +69,8 @@ func NewPeerConnectionThread(
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
 			gcc.SendSideBWEInitialBitrate(10_000_000),
-			gcc.SendSideBWEMaxBitrate(50_000_000),
-			gcc.SendSideBWEMinBitrate(3_000_000),
+			gcc.SendSideBWEMaxBitrate(20_000_000),
+			gcc.SendSideBWEMinBitrate(1_000),
 			gcc.SendSideBWEPacer(pacer),
 		)
 	})
@@ -210,6 +210,7 @@ func (pc *PeerConnectionThread) Spin() {
 					slog.Warn("bitrate controller is nil")
 					return
 				}
+				slog.Info("setting bitrate", "bitrate", bitrate)
 				bitrateController.SetBitRate(bitrate)
 			})
 		case webrtc.PeerConnectionStateClosed:
