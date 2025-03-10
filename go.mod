@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/asticode/go-astiav v0.33.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/jfreymuth/pulse v0.1.2-0.20250227192922-7a016f9e4952
 	github.com/pion/interceptor v0.1.37
 	github.com/pion/mediadevices v0.7.2-0.20250305024045-959d53708012
 	github.com/pion/rtp v1.8.12
