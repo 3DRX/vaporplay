@@ -28,6 +28,8 @@ github.com/pion/mediadevices v0.7.2-0.20250310010002-4c70a5f68609 h1:FE+HZhvVO9O
 github.com/pion/mediadevices v0.7.2-0.20250310010002-4c70a5f68609/go.mod h1:OS1xNt811uMnIWhpPjXXX6nDgPi+tbL9n35kEiDQ8cI=
 github.com/pion/mediadevices v0.7.2-0.20250310053555-9a47a07eba1d h1:sac1dEYhTCm5162nmCG4cMJWB6iENIznVOqcU+Xp4QU=
 github.com/pion/mediadevices v0.7.2-0.20250310053555-9a47a07eba1d/go.mod h1:OS1xNt811uMnIWhpPjXXX6nDgPi+tbL9n35kEiDQ8cI=
+github.com/pion/mediadevices v0.7.2-0.20250310142525-5cad3f1b41d0 h1:DGj55uQeC5DJIQrCwsp4WtM0G+tGurYOfVp/s+cMXzQ=
+github.com/pion/mediadevices v0.7.2-0.20250310142525-5cad3f1b41d0/go.mod h1:OS1xNt811uMnIWhpPjXXX6nDgPi+tbL9n35kEiDQ8cI=
 github.com/pion/randutil v0.1.0 h1:CFG1UdESneORglEsnimhUjf33Rwjubwj6xfiOXBa3mA=
 github.com/pion/randutil v0.1.0/go.mod h1:XcJrSMMbbMRhASFVOlj/5hQial/Y8oH/HVo7TBZq+j8=
 github.com/pion/rtcp v1.2.15 h1:LZQi2JbdipLOj4eBjK4wlVoQWfrZbh3Q6eHtWtJBZBo=

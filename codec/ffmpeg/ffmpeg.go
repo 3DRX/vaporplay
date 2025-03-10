@@ -13,8 +13,6 @@ import (
 	"github.com/pion/mediadevices/pkg/codec"
 	"github.com/pion/mediadevices/pkg/io/video"
 	"github.com/pion/mediadevices/pkg/prop"
-	"github.com/pion/rtp/codecs"
-	"github.com/pion/webrtc/v4"
 )
 
 type encoder struct {
@@ -76,7 +74,7 @@ func NewH265Params() (H265Params, error) {
 }
 
 func (p *H265Params) RTPCodec() *codec.RTPCodec {
-	return NewRTPH265Codec(90000)
+	return codec.NewRTPH265Codec(90000)
 }
 
 func (p *H265Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
@@ -102,7 +100,7 @@ func NewAV1Params() (AV1Params, error) {
 }
 
 func (p *AV1Params) RTPCodec() *codec.RTPCodec {
-	return NewRTPAV1Codec(90000)
+	return codec.NewRTPAV1Codec(90000)
 }
 
 func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
@@ -113,38 +111,6 @@ func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (code
 	}
 	slog.Info("sucsessfully created new encoder")
 	return readCloser, nil
-}
-
-func NewRTPH265Codec(clockrate uint32) *codec.RTPCodec {
-	return &codec.RTPCodec{
-		RTPCodecParameters: webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeH265,
-				ClockRate:    90000,
-				Channels:     0,
-				SDPFmtpLine:  "",
-				RTCPFeedback: nil,
-			},
-			PayloadType: 125,
-		},
-		Payloader: &codecs.H265Payloader{},
-	}
-}
-
-func NewRTPAV1Codec(clockrate uint32) *codec.RTPCodec {
-	return &codec.RTPCodec{
-		RTPCodecParameters: webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeAV1,
-				ClockRate:    90000,
-				Channels:     0,
-				SDPFmtpLine:  "level-idx=5;profile=0;tier=0",
-				RTCPFeedback: nil,
-			},
-			PayloadType: 100,
-		},
-		Payloader: &codecs.AV1Payloader{},
-	}
 }
 
 func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
