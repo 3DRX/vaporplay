@@ -6,7 +6,7 @@ require (
 	github.com/asticode/go-astiav v0.33.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/interceptor v0.1.37
-	github.com/pion/mediadevices v0.7.2-0.20250310010002-4c70a5f68609
+	github.com/pion/mediadevices v0.7.2-0.20250310053555-9a47a07eba1d
 	github.com/pion/rtp v1.8.12
 	github.com/pion/webrtc/v4 v4.0.13
 )
