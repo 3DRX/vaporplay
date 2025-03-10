@@ -153,7 +153,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 		p.FrameRate = 90
 	}
 	slog.Info("creating new encoder", "params", params, "props", p)
-	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelDebug))
+	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
 	hwDevice, err := astiav.CreateHardwareDeviceContext(
 		astiav.HardwareDeviceType(astiav.HardwareDeviceTypeCUDA),
@@ -194,11 +194,6 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	codecOptions.Set("tune", "ull", 0)
 	codecOptions.Set("preset", "p1", 0)
 	codecOptions.Set("rc", "cbr", 0)
-	// codecOptions.Set("cbr", "1", 0)
-	// codecOptions.Set("qp", "5", 0)
-	for i, li := range codecOptions.List() {
-		fmt.Printf("li %d: %s\n", i, li.Name())
-	}
 
 	// Create hardware frames context
 	hwFramesCtx := astiav.AllocHardwareFramesContext(hwDevice)
@@ -344,13 +339,10 @@ func (e *encoder) ForceKeyFrame() error {
 	return nil
 }
 
-// SetBitrate updates the encoder's bitrate
-func (e *encoder) SetBitrate(bitrate int64) error {
+func (e *encoder) SetBitRate(bitrate int) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-
-	e.codecCtx.SetBitRate(bitrate)
-
+	e.codecCtx.SetBitRate(int64(bitrate))
 	return nil
 }
 

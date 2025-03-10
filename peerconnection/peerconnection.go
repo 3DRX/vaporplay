@@ -11,8 +11,11 @@ import (
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/cc"
+	"github.com/pion/interceptor/pkg/gcc"
 
 	"github.com/pion/mediadevices"
+	"github.com/pion/mediadevices/pkg/codec"
 	"github.com/pion/mediadevices/pkg/prop"
 	"github.com/pion/webrtc/v4"
 )
@@ -37,6 +40,7 @@ type PeerConnectionThread struct {
 	peerConnection    *webrtc.PeerConnection
 	gameConfig        *config.GameConfig
 	gamepadControl    *GamepadControl
+	estimatorChan     chan cc.BandwidthEstimator
 }
 
 func NewPeerConnectionThread(
@@ -50,7 +54,7 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	params.BitRate = 5_000_000
+	params.BitRate = 10_000_000
 	params.KeyFrameInterval = 270
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
@@ -61,23 +65,29 @@ func NewPeerConnectionThread(
 	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
 		panic(err)
 	}
-	// congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
-	// 	return gcc.NewSendSideBWE(gcc.SendSideBWEInitialBitrate(400_000))
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// estimatorChan := make(chan cc.BandwidthEstimator, 1)
-	// congestionControllerFactory.OnNewPeerConnection(func(id string, estimator cc.BandwidthEstimator) { //nolint: revive
-	// 	estimatorChan <- estimator
-	// })
-	// i.Add(congestionControllerFactory)
-	// if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
-	// 	panic(err)
-	// }
-	// if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
-	// 	panic(err)
-	// }
+	pacer := gcc.NewNoOpPacer()
+	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
+		return gcc.NewSendSideBWE(
+			gcc.SendSideBWEInitialBitrate(10_000_000),
+			gcc.SendSideBWEMaxBitrate(50_000_000),
+			gcc.SendSideBWEMinBitrate(3_000_000),
+			gcc.SendSideBWEPacer(pacer),
+		)
+	})
+	if err != nil {
+		panic(err)
+	}
+	estimatorChan := make(chan cc.BandwidthEstimator, 1)
+	congestionControllerFactory.OnNewPeerConnection(func(id string, estimator cc.BandwidthEstimator) { //nolint: revive
+		estimatorChan <- estimator
+	})
+	i.Add(congestionControllerFactory)
+	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
+		panic(err)
+	}
+	if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
+		panic(err)
+	}
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -121,20 +131,6 @@ func NewPeerConnectionThread(
 		slog.Info("add video track success")
 	}
 
-	// estimator := <-estimatorChan
-
-	// estimator.OnTargetBitrateChange(func(bitrate int) {
-	// 	slog.Info("Target bitrate changed", "bitrate", bitrate)
-	// 	if encoderController == nil {
-	// 		return
-	// 	}
-	// 	bitrateController, ok := encoderController.(codec.BitRateController)
-	// 	if !ok {
-	// 		return
-	// 	}
-	// 	bitrateController.SetBitRate(bitrate)
-	// })
-
 	gamepadControl, err := NewGamepadControl()
 	if err != nil {
 		panic(err)
@@ -148,6 +144,7 @@ func NewPeerConnectionThread(
 		peerConnection:    peerConnection,
 		gameConfig:        selectedGame,
 		gamepadControl:    gamepadControl,
+		estimatorChan:     estimatorChan,
 	}
 	return pc
 }
@@ -191,7 +188,31 @@ func (pc *PeerConnectionThread) Spin() {
 		pc.sendCandidateChan <- c.ToJSON()
 	})
 	pc.peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		if s == webrtc.PeerConnectionStateClosed {
+		switch s {
+		case webrtc.PeerConnectionStateConnected:
+			senders := pc.peerConnection.GetSenders()
+			var bitrateController codec.BitRateController
+			for _, sender := range senders {
+				vt, ok := sender.Track().(*mediadevices.VideoTrack)
+				if !ok {
+					continue
+				}
+				encoderController := vt.EncoderController()
+				bitrateController, ok = encoderController.(codec.BitRateController)
+				if !ok {
+					bitrateController = nil
+					slog.Warn("current codec does not implement BitRateController")
+				}
+			}
+			estimator := <-pc.estimatorChan
+			estimator.OnTargetBitrateChange(func(bitrate int) {
+				if bitrateController == nil {
+					slog.Warn("bitrate controller is nil")
+					return
+				}
+				bitrateController.SetBitRate(bitrate)
+			})
+		case webrtc.PeerConnectionStateClosed:
 			slog.Info("Peer connection closed")
 			// kill game processes
 			for _, processConfig := range pc.gameConfig.EndGameCommands {
