@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jfreymuth/pulse v0.1.2-0.20250227192922-7a016f9e4952
 	github.com/pion/interceptor v0.1.37
-	github.com/pion/mediadevices v0.7.2-0.20250305024045-959d53708012
+	github.com/pion/mediadevices v0.7.2-0.20250310010002-4c70a5f68609
 	github.com/pion/rtp v1.8.12
 	github.com/pion/webrtc/v4 v4.0.13
 )
