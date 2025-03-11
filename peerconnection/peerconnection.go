@@ -10,9 +10,9 @@ import (
 	"github.com/3DRX/piongs/codec/ffmpeg"
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
+	"github.com/3DRX/piongs/interceptor/cc"
+	"github.com/3DRX/piongs/interceptor/gcc"
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/pkg/cc"
-	"github.com/pion/interceptor/pkg/gcc"
 
 	"github.com/pion/mediadevices"
 	"github.com/pion/mediadevices/pkg/codec"
