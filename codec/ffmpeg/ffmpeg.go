@@ -48,7 +48,8 @@ func NewH264Params() (H264Params, error) {
 
 // RTPCodec represents the codec metadata
 func (p *H264Params) RTPCodec() *codec.RTPCodec {
-	return codec.NewRTPH264Codec(90000)
+	defaultH264Codec := codec.NewRTPH264Codec(90000)
+	return defaultH264Codec
 }
 
 func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
@@ -74,7 +75,8 @@ func NewH265Params() (H265Params, error) {
 }
 
 func (p *H265Params) RTPCodec() *codec.RTPCodec {
-	return codec.NewRTPH265Codec(90000)
+	defaultH265Codec := codec.NewRTPH265Codec(90000)
+	return defaultH265Codec
 }
 
 func (p *H265Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
@@ -100,7 +102,8 @@ func NewAV1Params() (AV1Params, error) {
 }
 
 func (p *AV1Params) RTPCodec() *codec.RTPCodec {
-	return codec.NewRTPAV1Codec(90000)
+	defaultAV1Codec := codec.NewRTPAV1Codec(90000)
+	return defaultAV1Codec
 }
 
 func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
