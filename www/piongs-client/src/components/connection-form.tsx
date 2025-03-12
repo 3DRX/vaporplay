@@ -24,12 +24,14 @@ import { GetGameInfos } from "@/lib/datafetch";
 import SelectItemWithImage from "./select-custom";
 
 export default function ConnectionForm(props: {
+  defaultServer: string;
   onSubmit: (values: FormType) => void;
+  onFirstSubmit: (server: string) => void;
 }) {
   const form = useForm<FormType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      server: "",
+      server: props.defaultServer,
       game: undefined,
     },
   });
@@ -46,6 +48,7 @@ export default function ConnectionForm(props: {
 
   const handleNextStage = () => {
     if (currentStage === 1 && form.watch("server")) {
+      props.onFirstSubmit(form.watch("server"));
       setCurrentStage(2); // Move to the second stage if server URL is provided
     }
   };

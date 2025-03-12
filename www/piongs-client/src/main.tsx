@@ -38,6 +38,7 @@ createRoot(document.getElementById("root")!).render(
 );
 
 function App() {
+  const [startGame, setStartGame] = useState(false);
   const [server, setServer] = useLocalStorage("piongs-client-server", "");
   const [game, setGame] = useState<GameInfoType | null>(null);
   // const [config, setConfig] = useLocalStorage<Config>("piongs-client-config", {
@@ -51,13 +52,18 @@ function App() {
     if (values.game) {
       setGame(values.game);
     }
+    setStartGame(true);
   }
 
-  const onExit = useCallback(() => setServer(""), []);
+  function onFirstSubmit(server: string) {
+    setServer(server);
+  }
+
+  const onExit = useCallback(() => setStartGame(false), []);
 
   return (
     <div className="max-h-svh">
-      {server.length !== 0 && game ? (
+      {server.length !== 0 && startGame && game ? (
         <Gameplay server={server} game={game} onExit={onExit} />
       ) : (
         <>
@@ -67,7 +73,11 @@ function App() {
               <CardDescription></CardDescription>
             </CardHeader>
             <CardContent>
-              <ConnectionForm onSubmit={onSubmit} />
+              <ConnectionForm
+                defaultServer={server}
+                onSubmit={onSubmit}
+                onFirstSubmit={onFirstSubmit}
+              />
             </CardContent>
           </Card>
           <div className="mx-auto mt-10 max-w-[60rem]">
