@@ -171,7 +171,11 @@ func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
 		return dst
 	case pixFmtBGR24:
-		C.copyBGR24(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
+		// C.copyBGR24(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
+		// try a creazy hack, since nvenc supports BGRA, we just package BGRA as RGBA,
+		// and select format BGRA in libavcodec.
+		// By doing this, hopefully we can reduce memory copy and improve performance.
+		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
 		return dst
 	case pixFmtRGB16:
 		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
