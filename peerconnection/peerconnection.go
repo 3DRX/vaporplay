@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/3DRX/piongs/codec/ffmpeg"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/pion/mediadevices"
 	"github.com/pion/mediadevices/pkg/codec"
+	"github.com/pion/mediadevices/pkg/driver"
 	"github.com/pion/mediadevices/pkg/prop"
 	"github.com/pion/webrtc/v4"
 )
@@ -41,6 +43,8 @@ type PeerConnectionThread struct {
 	gameConfig        *config.GameConfig
 	gamepadControl    *GamepadControl
 	estimatorChan     chan cc.BandwidthEstimator
+	cpuProfile        string
+	videoDriverLabel  string
 }
 
 func NewPeerConnectionThread(
@@ -49,6 +53,7 @@ func NewPeerConnectionThread(
 	sendCandidateChan chan<- webrtc.ICECandidateInit,
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
 	selectedGame *config.GameConfig,
+	cpuProfile string,
 ) *PeerConnectionThread {
 	params, err := ffmpeg.NewAV1Params()
 	if err != nil {
@@ -102,7 +107,7 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 
-	gamecapture.Initialize(selectedGame)
+	videoDriverLabel := gamecapture.Initialize(selectedGame)
 
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {
@@ -145,6 +150,8 @@ func NewPeerConnectionThread(
 		gameConfig:        selectedGame,
 		gamepadControl:    gamepadControl,
 		estimatorChan:     estimatorChan,
+		cpuProfile:        cpuProfile,
+		videoDriverLabel:  videoDriverLabel,
 	}
 	return pc
 }
@@ -159,6 +166,7 @@ func (pc *PeerConnectionThread) handleRemoteICECandidate() {
 }
 
 func (pc *PeerConnectionThread) Spin() {
+	endSpinPromise := make(chan struct{})
 	datachannel, err := pc.peerConnection.CreateDataChannel("controller", nil)
 	if err != nil {
 		panic(err)
@@ -233,12 +241,54 @@ func (pc *PeerConnectionThread) Spin() {
 					continue
 				}
 			}
-			// TODO: restore state to be able to connect with a client again
-			os.Exit(0)
+			endSpinPromise <- struct{}{}
 		}
 	})
 	go pc.handleRemoteICECandidate()
 	pc.sendSDPChan <- offer
 	remoteSDP := <-pc.recvSDPChan
+	if pc.cpuProfile != "" {
+		f, err := os.Create(pc.cpuProfile)
+		if err != nil {
+			panic(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 	pc.peerConnection.SetRemoteDescription(remoteSDP)
+	select {
+	case <-endSpinPromise:
+		// close all driver and encoder
+		if err := pc.gamepadControl.Close(); err != nil {
+			slog.Error("failed to close gamepad control", "error", err)
+			panic(err)
+		}
+		drivers := driver.GetManager().Query(func(d driver.Driver) bool {
+			if d.Info().Label == pc.videoDriverLabel {
+				return true
+			}
+			return false
+		})
+		if len(drivers) == 0 {
+			slog.Warn("no driver to close")
+		}
+		for _, d := range drivers {
+			if err := d.Close(); err != nil {
+				slog.Error("failed to close driver "+d.Info().Label, "error", err)
+				panic(err)
+			}
+		}
+		transceivers := pc.peerConnection.GetTransceivers()
+		for _, t := range transceivers {
+			if err := t.Stop(); err != nil {
+				slog.Error("failed to stop transceiver", "error", err)
+				panic(err)
+			}
+		}
+		if err := pc.peerConnection.GracefulClose(); err != nil {
+			slog.Error("failed to close peer connection", "error", err)
+			panic(err)
+		}
+		slog.Info("peer connection thread closed")
+	}
 }

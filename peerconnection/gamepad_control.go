@@ -62,6 +62,6 @@ func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
 	g.Gamepad.RightTriggerForce(dto.Buttons[7]*2 - 1)
 }
 
-func (g *GamepadControl) Close() {
-	g.Gamepad.Close()
+func (g *GamepadControl) Close() error {
+	return g.Gamepad.Close()
 }

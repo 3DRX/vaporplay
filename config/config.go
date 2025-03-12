@@ -107,19 +107,14 @@ func checkCfg(c *Config) error {
 	return nil
 }
 
-func LoadCfg() *Config {
-	args := os.Args
-	if len(args) != 2 {
-		fmt.Println("Usage: piongs <config_file>")
-		os.Exit(0)
-	}
-	if _, err := os.Stat(args[1]); errors.Is(err, os.ErrNotExist) {
-		slog.Info(args[1] + " not found, using default config")
+func LoadCfg(cfgPath string) *Config {
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		slog.Info(cfgPath + " not found, using default config")
 		return &Config{
 			Addr: "localhost:8080",
 		}
 	}
-	f, err := os.Open(args[1])
+	f, err := os.Open(cfgPath)
 	if err != nil {
 		panic(err)
 	}

@@ -26,7 +26,6 @@ import (
 
 const shmaddrInvalid = ^uintptr(0)
 
-type display C.Display
 type windowmatch C.WindowMatch
 
 type pixelFormat int
@@ -37,26 +36,6 @@ const (
 	pixFmtBGR16
 	pixFmtRGB16
 )
-
-func openDisplay() (*display, error) {
-	dp := C.XOpenDisplay(nil)
-	if dp == nil {
-		return nil, errors.New("failed to open display")
-	}
-	return (*display)(dp), nil
-}
-
-func (d *display) c() *C.Display {
-	return (*C.Display)(d)
-}
-
-func (d *display) Close() {
-	C.XCloseDisplay(d.c())
-}
-
-func (d *display) NumScreen() int {
-	return int(C.XScreenCount(d.c()))
-}
 
 func openWindow(windowname string) (*windowmatch, error) {
 	cstr := C.CString(windowname)
@@ -83,12 +62,12 @@ type shmImage struct {
 
 func (s *shmImage) Free() {
 	if s.img != nil {
+		C.shmdt(unsafe.Pointer(s.shm.shmaddr))
 		C.XShmDetach(s.dp, &s.shm)
 		C.XDestroyImage(s.img)
 	}
-	if uintptr(unsafe.Pointer(s.shm.shmaddr)) != shmaddrInvalid {
-		C.shmdt(unsafe.Pointer(s.shm.shmaddr))
-	}
+	// if uintptr(unsafe.Pointer(s.shm.shmaddr)) != shmaddrInvalid {
+	// }
 }
 
 func (s *shmImage) ColorModel() color.Model {
@@ -261,9 +240,8 @@ func newShmImage(dp *C.Display, window C.Window) (*shmImage, error) {
 }
 
 type reader struct {
-	dp     *C.Display
-	window C.Window
-	img    *shmImage
+	img *shmImage
+	wm  *windowmatch
 }
 
 func getShmImageFromWindowMatch(wm *windowmatch) (*shmImage, error) {
@@ -273,7 +251,7 @@ func getShmImageFromWindowMatch(wm *windowmatch) (*shmImage, error) {
 
 	img, err := newShmImage(wm.display, wm.window)
 	if err != nil {
-		C.XCloseDisplay(wm.display)
+		wm.Close()
 		return nil, err
 	}
 
@@ -292,9 +270,8 @@ func newReader(windowname string) (*reader, error) {
 	}
 
 	return &reader{
-		dp:     wm.display,
-		window: wm.window,
-		img:    img,
+		img: img,
+		wm:  wm,
 	}, nil
 }
 
@@ -303,7 +280,7 @@ func (r *reader) Size() (int, int) {
 }
 
 func (r *reader) Read() *shmImage {
-	C.XShmGetImage(r.dp, r.window, r.img.img, 0, 0, C.AllPlanes)
+	C.XShmGetImage(r.wm.display, r.wm.window, r.img.img, 0, 0, C.AllPlanes)
 	r.img.b = C.GoBytes(
 		unsafe.Pointer(r.img.img.data),
 		C.int(r.img.img.width*r.img.img.height*4),
@@ -313,10 +290,5 @@ func (r *reader) Read() *shmImage {
 
 func (r *reader) Close() {
 	r.img.Free()
-	C.XCloseDisplay(r.dp)
-}
-
-// cAlign64 is fot testing
-func cAlign64(ptr uintptr) uintptr {
-	return uintptr(C.align64ForTest(C.size_t(uintptr(ptr))))
+	r.wm.Close()
 }

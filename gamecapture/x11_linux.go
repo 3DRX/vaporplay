@@ -30,7 +30,7 @@ func deviceID(name string) string {
 }
 
 // Start the game and block until the game window appears
-func Initialize(gameCfg *config.GameConfig) {
+func Initialize(gameCfg *config.GameConfig) string {
 	cmd := exec.Command(STEAM_CMD, fmt.Sprintf(STEAM_URL, gameCfg.GameId))
 	_, err := cmd.Output()
 	if err != nil {
@@ -64,15 +64,17 @@ func Initialize(gameCfg *config.GameConfig) {
 		break
 	}
 	slog.Info("initializing game capture", "windowname", gameCfg.GameWindowName)
+	labelName := deviceID(gameCfg.GameWindowName)
 	driver.GetManager().Register(
 		&screen{
 			name: gameCfg.GameWindowName,
 		},
 		driver.Info{
-			Label:      deviceID(gameCfg.GameWindowName),
+			Label:      labelName,
 			DeviceType: driver.Camera,
 		},
 	)
+	return labelName
 }
 
 func (s *screen) Open() error {

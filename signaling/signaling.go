@@ -1,6 +1,7 @@
 package signaling
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,7 @@ type SignalingThread struct {
 	sendCandidateChan   <-chan webrtc.ICECandidateInit
 	recvCandidateChan   chan<- webrtc.ICECandidateInit
 	connecting          bool
+	httpServer          *http.Server
 }
 
 func NewSignalingThread(
@@ -82,13 +84,26 @@ func (s *SignalingThread) Spin() <-chan *config.GameConfig {
 			middleware.CORSMiddleware,
 		),
 	}
+	s.httpServer = httpServer
 	go func() {
 		err := httpServer.ListenAndServe()
-		if err != nil {
+		if err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
 	return s.haveReceiverPromise
+}
+
+func (s *SignalingThread) Close() error {
+	if s.httpServer != nil {
+		if s.conn != nil {
+			if err := s.conn.Close(); err != nil {
+				return err
+			}
+		}
+		return s.httpServer.Shutdown(context.Background())
+	}
+	return nil
 }
 
 func (s *SignalingThread) handleSendMessages() {
