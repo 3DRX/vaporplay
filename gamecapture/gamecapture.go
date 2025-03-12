@@ -66,8 +66,6 @@ func (s *shmImage) Free() {
 		C.XShmDetach(s.dp, &s.shm)
 		C.XDestroyImage(s.img)
 	}
-	// if uintptr(unsafe.Pointer(s.shm.shmaddr)) != shmaddrInvalid {
-	// }
 }
 
 func (s *shmImage) ColorModel() color.Model {
