@@ -156,6 +156,9 @@ func (s *shmImage) RGBAAt(x, y int) color.RGBA {
 	}
 }
 
+// ToRGBA actually convert image as BGRA format, but in RGBA struct.
+// Later in nvenc, we will use BGRA format,
+// so we can reduce memory copy when the X11 piexl format is BGR (which is for most cases).
 func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 	dst.Rect = s.Bounds()
 	dst.Stride = int(s.img.width) * 4
@@ -168,7 +171,9 @@ func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 	}
 	switch s.pixFmt {
 	case pixFmtRGB24:
-		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
+		// C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
+		// Since we use BGRA pixel format later in nvenc, we need to turn rgb to bgr
+		C.copyBGR24(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
 		return dst
 	case pixFmtBGR24:
 		// C.copyBGR24(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
@@ -178,10 +183,12 @@ func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
 		return dst
 	case pixFmtRGB16:
-		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
+		// C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
+		C.copyBGR16(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
 		return dst
 	case pixFmtBGR16:
-		C.copyBGR16(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
+		// C.copyBGR16(unsafe.Pointer(&dst.Pix[0]), s.img.data, C.size_t(len(dst.Pix)))
+		C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
 		return dst
 	default:
 		panic("unsupported pixel format")
