@@ -122,7 +122,7 @@ export default function ConnectionForm(props: {
                                 value={game.game_id}
                                 src={`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.game_id}/header.jpg`}
                                 alt=""
-                                className="text-2xl"
+                                className="text-md md:text-2xl"
                               >
                                 {game.game_display_name}
                               </SelectItemWithImage>

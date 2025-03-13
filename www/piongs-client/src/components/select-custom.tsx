@@ -32,7 +32,7 @@ const SelectItemWithImage = React.forwardRef<
       </SelectPrimitive.ItemIndicator>
     </span>
     <div className="w-8" />
-    <img src={src} alt={alt} className="max-h-28 rounded-sm" />
+    <img src={src} alt={alt} className="max-h-10 rounded-sm md:max-h-28" />
     <div className="grow" />
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <div className="w-8" />
