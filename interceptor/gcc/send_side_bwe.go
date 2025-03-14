@@ -4,8 +4,12 @@
 package gcc
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"log/slog"
 	"math"
+	"os"
 	"sync"
 	"time"
 
@@ -57,6 +61,9 @@ type SendSideBWE struct {
 
 	close     chan struct{}
 	closeLock sync.RWMutex
+
+	statsChan   chan []cc.Acknowledgment
+	rfc8888Chan chan []cc.Acknowledgment
 }
 
 // Option configures a bandwidth estimator.
@@ -100,6 +107,8 @@ func SendSideBWEPacer(p Pacer) Option {
 
 // NewSendSideBWE creates a new sender side bandwidth estimator.
 func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
+	statsChan := make(chan []cc.Acknowledgment, 100)
+	rfc8888Chan := make(chan []cc.Acknowledgment, 100)
 	send := &SendSideBWE{
 		pacer:                 nil,
 		lossController:        nil,
@@ -112,6 +121,8 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 		minBitrate:            minBitrate,
 		maxBitrate:            maxBitrate,
 		close:                 make(chan struct{}),
+		statsChan:             statsChan,
+		rfc8888Chan:           rfc8888Chan,
 	}
 	for _, opt := range opts {
 		if err := opt(send); err != nil {
@@ -130,6 +141,8 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 	})
 
 	send.delayController.onUpdate(send.onDelayUpdate)
+
+	go StatsThread(statsChan, rfc8888Chan)
 
 	return send, nil
 }
@@ -196,28 +209,39 @@ func (e *SendSideBWE) WriteRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) er
 					feedbackSentTime = ack.Arrival
 				}
 			}
+
+			feedbackMinRTT := time.Duration(math.MaxInt)
+			for _, ack := range acks {
+				if ack.Arrival.IsZero() {
+					continue
+				}
+				pendingTime := feedbackSentTime.Sub(ack.Arrival)
+				rtt := now.Sub(ack.Departure) - pendingTime
+				feedbackMinRTT = time.Duration(minInt(int(rtt), int(feedbackMinRTT)))
+			}
+			if feedbackMinRTT < math.MaxInt {
+				e.delayController.updateRTT(feedbackMinRTT)
+			}
+
+			slog.Info(
+				"OnTransportPacketsFeedback",
+				"len(acks)",
+				len(acks),
+				"feedbackMinRTT",
+				feedbackMinRTT,
+			)
+			e.statsChan <- acks
+
+			e.lossController.updateLossEstimate(acks)
+			e.delayController.updateDelayEstimate(acks)
 		case *rtcp.CCFeedbackReport:
 			acks = e.feedbackAdapter.OnRFC8888Feedback(now, fb)
 			feedbackSentTime = ntp.ToTime(uint64(fb.ReportTimestamp) << 16)
+			e.rfc8888Chan <- acks
 		default:
 			continue
 		}
 
-		feedbackMinRTT := time.Duration(math.MaxInt)
-		for _, ack := range acks {
-			if ack.Arrival.IsZero() {
-				continue
-			}
-			pendingTime := feedbackSentTime.Sub(ack.Arrival)
-			rtt := now.Sub(ack.Departure) - pendingTime
-			feedbackMinRTT = time.Duration(minInt(int(rtt), int(feedbackMinRTT)))
-		}
-		if feedbackMinRTT < math.MaxInt {
-			e.delayController.updateRTT(feedbackMinRTT)
-		}
-
-		e.lossController.updateLossEstimate(acks)
-		e.delayController.updateDelayEstimate(acks)
 	}
 
 	return nil
@@ -297,5 +321,70 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 	e.latestStats = Stats{
 		LossStats:  lossStats,
 		DelayStats: delayStats,
+	}
+}
+
+func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Acknowledgment) {
+	f, err := os.Create("transport_packets_feedback.csv")
+	if err != nil {
+		panic(err)
+	}
+	w := bufio.NewWriter(f)
+	w.WriteString("sequence_number,ssrc,size,departure,arrival,ecn\n")
+	defer f.Close()
+	f2, err := os.Create("rfc8888.csv")
+	if err != nil {
+		panic(err)
+	}
+	w2 := bufio.NewWriter(f2)
+	w2.WriteString("sequence_number,ssrc,size,departure,arrival,ecn\n")
+	defer f2.Close()
+	index := 0
+	index2 := 0
+	for {
+		select {
+		case statsItem := <-statsChan:
+			for _, p := range statsItem {
+				_, err := w.WriteString(
+					fmt.Sprintf(
+						"%d,%d,%d,%d,%d,%d\n",
+						p.SequenceNumber,
+						p.SSRC,
+						p.Size,
+						int64(float64(p.Departure.UnixNano())/1e+6),
+						int64(float64(p.Arrival.UnixNano())/1e+6),
+						p.ECN,
+					),
+				)
+				if err != nil {
+					slog.Error("failed to transport packets feedback to file", "error", err)
+				}
+			}
+			if index%270 == 0 {
+				w.Flush()
+			}
+			index++
+		case statsItem := <-rfc8888Chan:
+			for _, p := range statsItem {
+				_, err := w2.WriteString(
+					fmt.Sprintf(
+						"%d,%d,%d,%d,%d,%d\n",
+						p.SequenceNumber,
+						p.SSRC,
+						p.Size,
+						int64(float64(p.Departure.UnixNano())/1e+6),
+						int64(float64(p.Arrival.UnixNano())/1e+6),
+						p.ECN,
+					),
+				)
+				if err != nil {
+					slog.Error("failed to transport packets feedback to file", "error", err)
+				}
+			}
+			if index2%270 == 0 {
+				w2.Flush()
+			}
+			index2++
+		}
 	}
 }

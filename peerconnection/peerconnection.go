@@ -55,7 +55,7 @@ func NewPeerConnectionThread(
 	selectedGame *config.GameConfig,
 	cpuProfile string,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewAV1Params()
+	params, err := ffmpeg.NewH264Params()
 	if err != nil {
 		panic(err)
 	}

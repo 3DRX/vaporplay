@@ -6,6 +6,7 @@ package cc
 import (
 	"container/list"
 	"errors"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -87,7 +88,10 @@ func (f *FeedbackAdapter) OnSent(ts time.Time, header *rtp.Header, size int, att
 	hdrExtensionID := attributes.Get(TwccExtensionAttributesKey)
 	id, ok := hdrExtensionID.(uint8)
 	if ok && hdrExtensionID != 0 {
-		return f.onSentTWCC(ts, id, header, size)
+		err := f.onSentTWCC(ts, id, header, size)
+		if err != nil {
+			return err
+		}
 	}
 
 	return f.onSentRFC8888(ts, header, size)
@@ -219,7 +223,9 @@ func (f *FeedbackAdapter) OnRFC8888Feedback(_ time.Time, feedback *rtcp.CCFeedba
 	result := []Acknowledgment{}
 	referenceTime := ntp.ToTime(uint64(feedback.ReportTimestamp) << 16)
 	for _, rb := range feedback.ReportBlocks {
+		slog.Info("report blocks")
 		for i, mb := range rb.MetricBlocks {
+			slog.Info("metric blocks")
 			sequenceNumber := rb.BeginSequence + uint16(i) //nolint:gosec // G115
 			key := feedbackHistoryKey{
 				ssrc:           rb.MediaSSRC,
