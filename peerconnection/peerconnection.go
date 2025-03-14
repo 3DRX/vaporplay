@@ -70,10 +70,11 @@ func NewPeerConnectionThread(
 	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
 		panic(err)
 	}
+	// pacer := gcc.NewLeakyBucketPacer(10_000_000 * 1.5)
 	pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(10_000_000),
+			gcc.SendSideBWEInitialBitrate(1_000),
 			gcc.SendSideBWEMaxBitrate(20_000_000),
 			gcc.SendSideBWEMinBitrate(1_000),
 			gcc.SendSideBWEPacer(pacer),
@@ -219,7 +220,7 @@ func (pc *PeerConnectionThread) Spin() {
 					return
 				}
 				slog.Info("setting bitrate", "bitrate", bitrate)
-				bitrateController.SetBitRate(bitrate)
+				bitrateController.SetBitRate(int(float64(bitrate) * 0.9))
 			})
 		case webrtc.PeerConnectionStateClosed:
 			slog.Info("Peer connection closed")

@@ -6,11 +6,12 @@ package cc
 import (
 	"container/list"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
-	"github.com/pion/interceptor"
 	"github.com/3DRX/piongs/interceptor/ntp"
+	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
@@ -27,13 +28,19 @@ var (
 // FeedbackAdapter converts incoming RTCP Packets (TWCC and RFC8888) into Acknowledgments.
 // Acknowledgments are the common format that Congestion Controllers in Pion understand.
 type FeedbackAdapter struct {
-	lock    sync.Mutex
-	history *feedbackHistory
+	lock                          sync.Mutex
+	history                       *feedbackHistory
+	lastTransportFeedbackBaseTime time.Time
+	currentOffset                 time.Time
 }
 
 // NewFeedbackAdapter returns a new FeedbackAdapter.
 func NewFeedbackAdapter() *FeedbackAdapter {
-	return &FeedbackAdapter{history: newFeedbackHistory(250)}
+	return &FeedbackAdapter{
+		history:                       newFeedbackHistory(250),
+		lastTransportFeedbackBaseTime: time.Time{}.Add(kMinusInfinity),
+		currentOffset:                 time.Time{}.Add(kMinusInfinity),
+	}
 }
 
 func (f *FeedbackAdapter) onSentRFC8888(ts time.Time, header *rtp.Header, size int) error {
@@ -147,14 +154,32 @@ func (f *FeedbackAdapter) unpackStatusVectorChunk(
 // OnTransportCCFeedback converts incoming TWCC RTCP packet feedback to
 // Acknowledgments.
 func (f *FeedbackAdapter) OnTransportCCFeedback(
-	_ time.Time, feedback *rtcp.TransportLayerCC,
+	now time.Time, feedback *rtcp.TransportLayerCC,
 ) ([]Acknowledgment, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
+	baseTime := getBaseTime(feedback)
+	tpi := time.Time{}.Add(kPlusInfinity)
+	tmi := time.Time{}.Add(kMinusInfinity)
+	if f.lastTransportFeedbackBaseTime == tpi || f.lastTransportFeedbackBaseTime == tmi {
+		f.currentOffset = now
+	} else {
+		delta := getBaseDelta(baseTime, f.lastTransportFeedbackBaseTime)
+		tzero := time.Time{}.Add(kZero)
+		if delta < tzero.Sub(f.currentOffset) {
+			f.currentOffset = now
+		} else {
+			f.currentOffset = f.currentOffset.Add(delta)
+		}
+	}
+	f.lastTransportFeedbackBaseTime = baseTime
+
 	result := []Acknowledgment{}
 	index := feedback.BaseSequenceNumber
-	refTime := time.Time{}.Add(time.Duration(feedback.ReferenceTime) * 64 * time.Millisecond)
+	refTime := f.currentOffset
+	// refTimeOld := time.Time{}.Add(time.Duration(feedback.ReferenceTime) * 64 * time.Millisecond)
+	// slog.Info("OnTransportCCFeedback", "refTime", refTime, "refTimeOld", refTimeOld)
 	recvDeltas := feedback.RecvDeltas
 
 	for _, chunk := range feedback.PacketChunks {
@@ -276,4 +301,27 @@ func (f *feedbackHistory) removeOldest() {
 			delete(f.items, key)
 		}
 	}
+}
+
+const (
+	kDeltaTick      = 250 * time.Microsecond
+	kBaseTimeTick   = kDeltaTick * (1 << 8)
+	kTimeWrapPeriod = kBaseTimeTick * (1 << 24)
+	kMinusInfinity  = time.Duration(math.MinInt64)
+	kPlusInfinity   = time.Duration(math.MaxInt64)
+	kZero           = time.Duration(0)
+)
+
+func getBaseTime(feedback *rtcp.TransportLayerCC) time.Time {
+	return time.Time{}.Add(kTimeWrapPeriod + time.Duration(feedback.ReferenceTime)*kBaseTimeTick)
+}
+
+func getBaseDelta(baseTime time.Time, prevTimeStamp time.Time) time.Duration {
+	delta := baseTime.Sub(prevTimeStamp)
+	if (delta - kTimeWrapPeriod).Abs() < delta.Abs() {
+		delta -= kTimeWrapPeriod
+	} else if (delta + kTimeWrapPeriod).Abs() < delta.Abs() {
+		delta += kTimeWrapPeriod
+	}
+	return delta
 }

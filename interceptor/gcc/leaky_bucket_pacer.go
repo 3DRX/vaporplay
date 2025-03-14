@@ -4,8 +4,12 @@
 package gcc
 
 import (
+	"bufio"
 	"container/list"
 	"errors"
+	"fmt"
+	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -21,6 +25,15 @@ type item struct {
 	payload    *[]byte
 	size       int
 	attributes interceptor.Attributes
+}
+
+type StatsItem struct {
+	budget        int
+	egress        int
+	egressCount   int
+	ingress       int
+	ingressCount  int
+	targetBitrate int
 }
 
 // LeakyBucketPacer implements a leaky bucket pacing algorithm.
@@ -40,6 +53,12 @@ type LeakyBucketPacer struct {
 	ssrcToWriter map[uint32]interceptor.RTPWriter
 	writerLock   sync.RWMutex
 
+	// for stats tracing
+	statsChan    chan StatsItem
+	iLock        sync.RWMutex
+	ingress      int
+	ingressCount int
+
 	pool *sync.Pool
 }
 
@@ -49,12 +68,13 @@ func NewLeakyBucketPacer(initialBitrate int) *LeakyBucketPacer {
 		log:            logging.NewDefaultLoggerFactory().NewLogger("pacer"),
 		f:              1.5,
 		targetBitrate:  initialBitrate,
-		pacingInterval: 5 * time.Millisecond,
+		pacingInterval: 10 * time.Millisecond,
 		qLock:          sync.RWMutex{},
 		queue:          list.New(),
 		done:           make(chan struct{}),
 		ssrcToWriter:   map[uint32]interceptor.RTPWriter{},
 		pool:           &sync.Pool{},
+		statsChan:      make(chan StatsItem, 10),
 	}
 	pacer.pool = &sync.Pool{
 		New: func() interface{} {
@@ -65,6 +85,8 @@ func NewLeakyBucketPacer(initialBitrate int) *LeakyBucketPacer {
 	}
 
 	go pacer.Run()
+
+	go StatsThread(pacer.statsChan)
 
 	return pacer
 }
@@ -111,13 +133,21 @@ func (p *LeakyBucketPacer) Write(header *rtp.Header, payload []byte, attributes 
 	})
 	p.qLock.Unlock()
 
-	return header.MarshalSize() + len(payload), nil
+	n := header.MarshalSize() + len(payload)
+	p.iLock.Lock()
+	p.ingress += n
+	p.ingressCount += 1
+	p.iLock.Unlock()
+
+	return n, nil
 }
 
 // Run starts the LeakyBucketPacer.
 func (p *LeakyBucketPacer) Run() {
 	ticker := time.NewTicker(p.pacingInterval)
 	defer ticker.Stop()
+
+	start := false
 
 	lastSent := time.Now()
 	for {
@@ -126,6 +156,9 @@ func (p *LeakyBucketPacer) Run() {
 			return
 		case now := <-ticker.C:
 			budget := int(float64(now.Sub(lastSent).Milliseconds()) * float64(p.getTargetBitrate()) / 8000.0)
+			fullBudget := budget
+			writeSuccess := true
+			egressCount := 0
 			p.qLock.Lock()
 			for p.queue.Len() != 0 && budget > 0 {
 				p.log.Infof("budget=%v, len(queue)=%v, targetBitrate=%v", budget, p.queue.Len(), p.getTargetBitrate())
@@ -150,15 +183,39 @@ func (p *LeakyBucketPacer) Run() {
 
 				n, err := writer.Write(next.header, (*next.payload)[:next.size], next.attributes)
 				if err != nil {
+					writeSuccess = false
 					p.log.Errorf("failed to write packet: %v", err)
 				}
 				lastSent = now
 				budget -= n
+				egressCount += 1
 
 				p.pool.Put(next.payload)
 				p.qLock.Lock()
 			}
 			p.qLock.Unlock()
+
+			if writeSuccess && budget != fullBudget {
+				start = true
+			}
+
+			if start {
+				p.iLock.Lock()
+				ingress := p.ingress
+				ingressCount := p.ingressCount
+				p.ingress = 0
+				p.ingressCount = 0
+				p.iLock.Unlock()
+				statsItem := StatsItem{
+					budget:        fullBudget,
+					egress:        fullBudget - budget,
+					egressCount:   egressCount,
+					ingress:       ingress,
+					ingressCount:  ingressCount,
+					targetBitrate: p.getTargetBitrate(),
+				}
+				p.statsChan <- statsItem
+			}
 		}
 	}
 }
@@ -168,4 +225,38 @@ func (p *LeakyBucketPacer) Close() error {
 	close(p.done)
 
 	return nil
+}
+
+func StatsThread(statsChan chan StatsItem) {
+	// open file for writing
+	f, err := os.Create("leaky_bucket_pacer.csv")
+	if err != nil {
+		panic(err)
+	}
+	w := bufio.NewWriter(f)
+	w.WriteString("budget,egress,egress_count,ingress,ingress_count,target_bitrate\n")
+	defer f.Close()
+	index := 0
+	var statsItem StatsItem
+	for {
+		select {
+		case statsItem = <-statsChan:
+			_, err := w.WriteString(fmt.Sprintf(
+				"%d,%d,%d,%d,%d,%d\n",
+				statsItem.budget,
+				statsItem.egress,
+				statsItem.egressCount,
+				statsItem.ingress,
+				statsItem.ingressCount,
+				statsItem.targetBitrate,
+			))
+			if err != nil {
+				slog.Error("failed to write pacer stats to file", "error", err)
+			}
+			if index%200 == 0 {
+				w.Flush()
+			}
+			index++
+		}
+	}
 }
