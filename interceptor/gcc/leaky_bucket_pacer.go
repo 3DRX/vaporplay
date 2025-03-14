@@ -86,7 +86,7 @@ func NewLeakyBucketPacer(initialBitrate int) *LeakyBucketPacer {
 
 	go pacer.Run()
 
-	go StatsThread(pacer.statsChan)
+	go PacerStatsThread(pacer.statsChan)
 
 	return pacer
 }
@@ -227,7 +227,7 @@ func (p *LeakyBucketPacer) Close() error {
 	return nil
 }
 
-func StatsThread(statsChan chan StatsItem) {
+func PacerStatsThread(statsChan chan StatsItem) {
 	// open file for writing
 	f, err := os.Create("leaky_bucket_pacer.csv")
 	if err != nil {

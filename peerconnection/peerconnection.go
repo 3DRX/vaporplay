@@ -55,7 +55,7 @@ func NewPeerConnectionThread(
 	selectedGame *config.GameConfig,
 	cpuProfile string,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewH264Params()
+	params, err := ffmpeg.NewAV1Params()
 	if err != nil {
 		panic(err)
 	}
@@ -70,11 +70,11 @@ func NewPeerConnectionThread(
 	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
 		panic(err)
 	}
-	// pacer := gcc.NewLeakyBucketPacer(10_000_000 * 1.5)
+	// pacer := gcc.NewLeakyBucketPacer(1_000_000 * 1.5)
 	pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(1_000),
+			gcc.SendSideBWEInitialBitrate(1_000_000),
 			gcc.SendSideBWEMaxBitrate(20_000_000),
 			gcc.SendSideBWEMinBitrate(1_000),
 			gcc.SendSideBWEPacer(pacer),
@@ -91,9 +91,9 @@ func NewPeerConnectionThread(
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
 		panic(err)
 	}
-	if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
-		panic(err)
-	}
+	// if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
+	// 	panic(err)
+	// }
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
