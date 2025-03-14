@@ -42,7 +42,7 @@ func Initialize(gameCfg *config.GameConfig) string {
 		wm, err := openWindow(gameCfg.GameWindowName)
 		if err != nil || wm == nil {
 			now := time.Now()
-			if now.Sub(start) > 30*time.Second {
+			if now.Sub(start) > 60*time.Second {
 				panic("failed to find game window")
 			}
 			slog.Info("waiting for game window", "windowname", gameCfg.GameWindowName)
