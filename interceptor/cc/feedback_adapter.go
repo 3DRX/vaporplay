@@ -164,8 +164,6 @@ func (f *FeedbackAdapter) OnTransportCCFeedback(
 	defer f.lock.Unlock()
 
 	baseTime := getBaseTime(feedback)
-	tpi := time.Time{}.Add(kPlusInfinity)
-	tmi := time.Time{}.Add(kMinusInfinity)
 	if f.lastTransportFeedbackBaseTime == tpi || f.lastTransportFeedbackBaseTime == tmi {
 		f.currentOffset = now
 	} else {
@@ -317,6 +315,9 @@ const (
 	kPlusInfinity   = time.Duration(math.MaxInt64)
 	kZero           = time.Duration(0)
 )
+
+var tpi = time.Time{}.Add(kPlusInfinity)
+var tmi = time.Time{}.Add(kMinusInfinity)
 
 func getBaseTime(feedback *rtcp.TransportLayerCC) time.Time {
 	return time.Time{}.Add(kTimeWrapPeriod + time.Duration(feedback.ReferenceTime)*kBaseTimeTick)

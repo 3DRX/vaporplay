@@ -223,13 +223,13 @@ func (e *SendSideBWE) WriteRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) er
 				e.delayController.updateRTT(feedbackMinRTT)
 			}
 
-			slog.Info(
-				"OnTransportPacketsFeedback",
-				"len(acks)",
-				len(acks),
-				"feedbackMinRTT",
-				feedbackMinRTT,
-			)
+			// slog.Info(
+			// 	"OnTransportPacketsFeedback",
+			// 	"len(acks)",
+			// 	len(acks),
+			// 	"feedbackMinRTT",
+			// 	feedbackMinRTT,
+			// )
 			e.statsChan <- acks
 
 			e.lossController.updateLossEstimate(acks)

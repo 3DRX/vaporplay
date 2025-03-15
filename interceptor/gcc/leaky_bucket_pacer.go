@@ -123,6 +123,12 @@ func (p *LeakyBucketPacer) Write(header *rtp.Header, payload []byte, attributes 
 
 	copy(*buf, payload)
 	hdr := header.Clone()
+	// fmt.Printf(
+	// 	"new rtp packet arrived at pacer, seq=%d, timestamp=%d, marker=%v\n",
+	// 	hdr.SequenceNumber,
+	// 	hdr.Timestamp,
+	// 	hdr.Marker,
+	// )
 
 	p.qLock.Lock()
 	p.queue.PushBack(&item{

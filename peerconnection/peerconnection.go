@@ -60,21 +60,18 @@ func NewPeerConnectionThread(
 		panic(err)
 	}
 	params.BitRate = 10_000_000
-	params.KeyFrameInterval = -1
+	params.KeyFrameInterval = 90 * 4
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
 	)
 	m := &webrtc.MediaEngine{}
 	codecselector.Populate(m)
 	i := &interceptor.Registry{}
-	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-		panic(err)
-	}
 	// pacer := gcc.NewLeakyBucketPacer(1_000_000 * 1.5)
 	pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(1_000_000),
+			gcc.SendSideBWEInitialBitrate(10_000_000),
 			gcc.SendSideBWEMaxBitrate(20_000_000),
 			gcc.SendSideBWEMinBitrate(1_000),
 			gcc.SendSideBWEPacer(pacer),
@@ -88,12 +85,12 @@ func NewPeerConnectionThread(
 		estimatorChan <- estimator
 	})
 	i.Add(congestionControllerFactory)
+	if err := webrtc.ConfigureNack(m, i); err != nil {
+		panic(err)
+	}
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
 		panic(err)
 	}
-	// if err := webrtc.ConfigureCongestionControlFeedback(m, i); err != nil {
-	// 	panic(err)
-	// }
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
