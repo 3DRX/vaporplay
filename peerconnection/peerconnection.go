@@ -13,6 +13,7 @@ import (
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/3DRX/piongs/interceptor/cc"
 	"github.com/3DRX/piongs/interceptor/gcc"
+	"github.com/asticode/go-astiav"
 	"github.com/pion/interceptor"
 
 	"github.com/pion/mediadevices"
@@ -55,12 +56,16 @@ func NewPeerConnectionThread(
 	selectedGame *config.GameConfig,
 	cpuProfile string,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewAV1Params()
+	params, err := ffmpeg.NewAV1NVENCParams(
+		"/dev/dri/card1",
+		astiav.PixelFormat(astiav.PixelFormatBgra),
+	)
 	if err != nil {
 		panic(err)
 	}
-	params.BitRate = 10_000_000
-	params.KeyFrameInterval = 90 * 4
+	params.BitRate = 5_000_000
+	params.FrameRate = 90
+	params.KeyFrameInterval = -1
 	codecselector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&params),
 	)
@@ -71,9 +76,9 @@ func NewPeerConnectionThread(
 	pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(10_000_000),
-			gcc.SendSideBWEMaxBitrate(20_000_000),
-			gcc.SendSideBWEMinBitrate(1_000),
+			gcc.SendSideBWEInitialBitrate(params.BitRate),
+			gcc.SendSideBWEMaxBitrate(30_000_000),
+			gcc.SendSideBWEMinBitrate(500_000),
 			gcc.SendSideBWEPacer(pacer),
 		)
 	})
@@ -111,7 +116,7 @@ func NewPeerConnectionThread(
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {
 			constraint.Width = prop.Int(1920)
 			constraint.Height = prop.Int(1080)
-			constraint.FrameRate = prop.Float(90)
+			constraint.FrameRate = prop.Float(params.FrameRate)
 		},
 		Codec: codecselector,
 	})

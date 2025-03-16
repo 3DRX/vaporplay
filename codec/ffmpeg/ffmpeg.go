@@ -15,7 +15,7 @@ import (
 	"github.com/pion/mediadevices/pkg/prop"
 )
 
-type encoder struct {
+type hardwareEncoder struct {
 	codec          *astiav.Codec
 	codecCtx       *astiav.CodecContext
 	hwFramesCtx    *astiav.HardwareFramesContext
@@ -38,10 +38,12 @@ type H264Params struct {
 	Params
 }
 
-func NewH264Params() (H264Params, error) {
+func NewH264NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H264Params, error) {
 	return H264Params{
 		Params: Params{
-			codecName: "h264_nvenc",
+			codecName:      "h264_nvenc",
+			hardwareDevice: hardwareDevice,
+			pixelFormat:    pixelFormat,
 		},
 	}, nil
 }
@@ -53,7 +55,7 @@ func (p *H264Params) RTPCodec() *codec.RTPCodec {
 }
 
 func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newEncoder(r, property, p.Params)
+	readCloser, err := newHardwareEncoder(r, property, p.Params)
 	if err != nil {
 		slog.Error("failed to create new encoder", "error", err)
 		return nil, err
@@ -66,10 +68,12 @@ type H265Params struct {
 	Params
 }
 
-func NewH265Params() (H265Params, error) {
+func NewH265NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H265Params, error) {
 	return H265Params{
 		Params: Params{
-			codecName: "hevc_nvenc",
+			codecName:      "hevc_nvenc",
+			hardwareDevice: hardwareDevice,
+			pixelFormat:    pixelFormat,
 		},
 	}, nil
 }
@@ -80,7 +84,7 @@ func (p *H265Params) RTPCodec() *codec.RTPCodec {
 }
 
 func (p *H265Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newEncoder(r, property, p.Params)
+	readCloser, err := newHardwareEncoder(r, property, p.Params)
 	if err != nil {
 		slog.Error("failed to create new encoder", "error", err)
 		return nil, err
@@ -93,10 +97,12 @@ type AV1Params struct {
 	Params
 }
 
-func NewAV1Params() (AV1Params, error) {
+func NewAV1NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (AV1Params, error) {
 	return AV1Params{
 		Params: Params{
-			codecName: "av1_nvenc",
+			codecName:      "av1_nvenc",
+			hardwareDevice: hardwareDevice,
+			pixelFormat:    pixelFormat,
 		},
 	}, nil
 }
@@ -107,7 +113,7 @@ func (p *AV1Params) RTPCodec() *codec.RTPCodec {
 }
 
 func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newEncoder(r, property, p.Params)
+	readCloser, err := newHardwareEncoder(r, property, p.Params)
 	if err != nil {
 		slog.Error("failed to create new encoder", "error", err)
 		return nil, err
@@ -116,17 +122,23 @@ func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (code
 	return readCloser, nil
 }
 
-func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
+func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareEncoder, error) {
 	if p.FrameRate == 0 {
-		slog.Warn("frame rate is 0, setting to 90")
-		p.FrameRate = 90
+		slog.Warn(fmt.Sprintf("frame rate is 0, setting to %f", params.FrameRate))
+		p.FrameRate = params.FrameRate
 	}
 	slog.Info("creating new encoder", "params", params, "props", p)
 	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
+	var hardwareDeviceType astiav.HardwareDeviceType
+	switch params.codecName {
+	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
+		hardwareDeviceType = astiav.HardwareDeviceType(astiav.HardwareDeviceTypeCUDA)
+	}
+
 	hwDevice, err := astiav.CreateHardwareDeviceContext(
-		astiav.HardwareDeviceType(astiav.HardwareDeviceTypeCUDA),
-		"/dev/dri/card1",
+		hardwareDeviceType,
+		params.hardwareDevice,
 		nil,
 		0,
 	)
@@ -149,20 +161,27 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	codecCtx.SetHeight(p.Height)
 	codecCtx.SetTimeBase(astiav.NewRational(1, int(p.FrameRate)))
 	codecCtx.SetFramerate(codecCtx.TimeBase().Invert())
-	codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
 	codecCtx.SetBitRate(int64(params.BitRate))
 	codecCtx.SetGopSize(params.KeyFrameInterval)
+	switch params.codecName {
+	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
+		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
+	}
 	codecOptions := codecCtx.PrivateData().Options()
 	switch params.codecName {
 	case "av1_nvenc":
 		codecCtx.SetProfile(astiav.Profile(astiav.ProfileAv1Main))
 		codecOptions.Set("tier", "0", 0)
 	}
-	codecOptions.Set("zerolatency", "1", 0)
-	codecOptions.Set("delay", "0", 0)
-	codecOptions.Set("tune", "ull", 0)
-	codecOptions.Set("preset", "p1", 0)
-	codecOptions.Set("rc", "cbr", 0)
+	switch params.codecName {
+	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
+		codecOptions.Set("forced-idr", "1", 0)
+		codecOptions.Set("zerolatency", "1", 0)
+		codecOptions.Set("delay", "0", 0)
+		codecOptions.Set("tune", "ull", 0)
+		codecOptions.Set("preset", "p1", 0)
+		codecOptions.Set("rc", "cbr", 0)
+	}
 
 	// Create hardware frames context
 	hwFramesCtx := astiav.AllocHardwareFramesContext(hwDevice)
@@ -174,9 +193,11 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	// Set hardware frames context parameters
 	hwFramesCtx.SetWidth(p.Width)
 	hwFramesCtx.SetHeight(p.Height)
-	hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
-	hwFramesCtx.SetSoftwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatBgra))
-	// hwFramesCtx.SetInitialPoolSize(20)
+	switch params.codecName {
+	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
+		hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
+	}
+	hwFramesCtx.SetSoftwarePixelFormat(params.pixelFormat)
 
 	err = hwFramesCtx.Initialize()
 	if err != nil {
@@ -198,7 +219,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 
 	softwareFrame.SetWidth(p.Width)
 	softwareFrame.SetHeight(p.Height)
-	softwareFrame.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatBgra))
+	softwareFrame.SetPixelFormat(params.pixelFormat)
 
 	err = softwareFrame.AllocBuffer(0)
 	if err != nil {
@@ -222,7 +243,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	statsItemChan := make(chan StatsItem, 100)
 	go StatsThread(statsItemChan)
 
-	return &encoder{
+	return &hardwareEncoder{
 		codec:          codec,
 		codecCtx:       codecCtx,
 		hwFramesCtx:    hwFramesCtx,
@@ -237,11 +258,11 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (*encoder, error) {
 	}, nil
 }
 
-func (e *encoder) Controller() codec.EncoderController {
+func (e *hardwareEncoder) Controller() codec.EncoderController {
 	return e
 }
 
-func (e *encoder) Read() ([]byte, func(), error) {
+func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -300,7 +321,7 @@ func (e *encoder) Read() ([]byte, func(), error) {
 }
 
 // ForceKeyFrame forces the next frame to be encoded as a keyframe
-func (e *encoder) ForceKeyFrame() error {
+func (e *hardwareEncoder) ForceKeyFrame() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	slog.Info("forcing key frame")
@@ -308,14 +329,14 @@ func (e *encoder) ForceKeyFrame() error {
 	return nil
 }
 
-func (e *encoder) SetBitRate(bitrate int) error {
+func (e *hardwareEncoder) SetBitRate(bitrate int) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.codecCtx.SetBitRate(int64(bitrate))
 	return nil
 }
 
-func (e *encoder) Close() error {
+func (e *hardwareEncoder) Close() error {
 	if e.packet != nil {
 		e.packet.Free()
 	}
