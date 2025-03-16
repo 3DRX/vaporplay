@@ -60,6 +60,10 @@ func NewPeerConnectionThread(
 		"/dev/dri/card1",
 		astiav.PixelFormat(astiav.PixelFormatBgra),
 	)
+	// params, err := ffmpeg.NewH264VAAPIParams(
+	// 	"/dev/dri/card0",
+	// 	astiav.PixelFormat(astiav.PixelFormatArgb),
+	// )
 	if err != nil {
 		panic(err)
 	}

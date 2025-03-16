@@ -48,6 +48,16 @@ func NewH264NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (
 	}, nil
 }
 
+func NewH264VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H264Params, error) {
+	return H264Params{
+		Params: Params{
+			codecName:      "h264_vaapi",
+			hardwareDevice: hardwareDevice,
+			pixelFormat:    pixelFormat,
+		},
+	}, nil
+}
+
 // RTPCodec represents the codec metadata
 func (p *H264Params) RTPCodec() *codec.RTPCodec {
 	defaultH264Codec := codec.NewRTPH264Codec(90000)
@@ -72,6 +82,16 @@ func NewH265NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (
 	return H265Params{
 		Params: Params{
 			codecName:      "hevc_nvenc",
+			hardwareDevice: hardwareDevice,
+			pixelFormat:    pixelFormat,
+		},
+	}, nil
+}
+
+func NewH265VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H265Params, error) {
+	return H265Params{
+		Params: Params{
+			codecName:      "hevc_vaapi",
 			hardwareDevice: hardwareDevice,
 			pixelFormat:    pixelFormat,
 		},
@@ -134,6 +154,8 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		hardwareDeviceType = astiav.HardwareDeviceType(astiav.HardwareDeviceTypeCUDA)
+	case "h264_vaapi", "hevc_vaapi":
+		hardwareDeviceType = astiav.HardwareDeviceType(astiav.HardwareDeviceTypeVAAPI)
 	}
 
 	hwDevice, err := astiav.CreateHardwareDeviceContext(
@@ -166,12 +188,23 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
+	case "h264_vaapi", "hevc_vaapi":
+		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatVaapi))
 	}
 	codecOptions := codecCtx.PrivateData().Options()
 	switch params.codecName {
 	case "av1_nvenc":
 		codecCtx.SetProfile(astiav.Profile(astiav.ProfileAv1Main))
 		codecOptions.Set("tier", "0", 0)
+	case "h264_vaapi":
+		codecCtx.SetProfile(astiav.Profile(astiav.ProfileH264Main))
+		codecOptions.Set("profile", "main", 0)
+		codecOptions.Set("level", "1", 0)
+	case "hevc_vaapi":
+		codecCtx.SetProfile(astiav.Profile(astiav.ProfileHevcMain))
+		codecOptions.Set("profile", "main", 0)
+		codecOptions.Set("tier", "main", 0)
+		codecOptions.Set("level", "1", 0)
 	}
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
@@ -181,6 +214,8 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 		codecOptions.Set("tune", "ull", 0)
 		codecOptions.Set("preset", "p1", 0)
 		codecOptions.Set("rc", "cbr", 0)
+	case "h264_vaapi", "hevc_vaapi":
+		codecOptions.Set("rc_mode", "CBR", 0)
 	}
 
 	// Create hardware frames context
@@ -196,6 +231,8 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
+	case "h264_vaapi", "hevc_vaapi":
+		hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatVaapi))
 	}
 	hwFramesCtx.SetSoftwarePixelFormat(params.pixelFormat)
 
