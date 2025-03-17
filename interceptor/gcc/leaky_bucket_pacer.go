@@ -34,6 +34,7 @@ type StatsItem struct {
 	ingress       int
 	ingressCount  int
 	targetBitrate int
+	bufferCount   int
 }
 
 // LeakyBucketPacer implements a leaky bucket pacing algorithm.
@@ -68,7 +69,7 @@ func NewLeakyBucketPacer(initialBitrate int) *LeakyBucketPacer {
 		log:            logging.NewDefaultLoggerFactory().NewLogger("pacer"),
 		f:              1.5,
 		targetBitrate:  initialBitrate,
-		pacingInterval: 10 * time.Millisecond,
+		pacingInterval: 5 * time.Millisecond,
 		qLock:          sync.RWMutex{},
 		queue:          list.New(),
 		done:           make(chan struct{}),
@@ -165,6 +166,7 @@ func (p *LeakyBucketPacer) Run() {
 			fullBudget := budget
 			writeSuccess := true
 			egressCount := 0
+			bufferCount := 0
 			p.qLock.Lock()
 			for p.queue.Len() != 0 && budget > 0 {
 				p.log.Infof("budget=%v, len(queue)=%v, targetBitrate=%v", budget, p.queue.Len(), p.getTargetBitrate())
@@ -199,6 +201,7 @@ func (p *LeakyBucketPacer) Run() {
 				p.pool.Put(next.payload)
 				p.qLock.Lock()
 			}
+			bufferCount = p.queue.Len()
 			p.qLock.Unlock()
 
 			if writeSuccess && budget != fullBudget {
@@ -219,6 +222,7 @@ func (p *LeakyBucketPacer) Run() {
 					ingress:       ingress,
 					ingressCount:  ingressCount,
 					targetBitrate: p.getTargetBitrate(),
+					bufferCount:   bufferCount,
 				}
 				p.statsChan <- statsItem
 			}
@@ -240,7 +244,7 @@ func PacerStatsThread(statsChan chan StatsItem) {
 		panic(err)
 	}
 	w := bufio.NewWriter(f)
-	w.WriteString("budget,egress,egress_count,ingress,ingress_count,target_bitrate\n")
+	w.WriteString("budget,egress,egress_count,ingress,ingress_count,target_bitrate,buffer_count\n")
 	defer f.Close()
 	index := 0
 	var statsItem StatsItem
@@ -248,13 +252,14 @@ func PacerStatsThread(statsChan chan StatsItem) {
 		select {
 		case statsItem = <-statsChan:
 			_, err := w.WriteString(fmt.Sprintf(
-				"%d,%d,%d,%d,%d,%d\n",
+				"%d,%d,%d,%d,%d,%d,%d\n",
 				statsItem.budget,
 				statsItem.egress,
 				statsItem.egressCount,
 				statsItem.ingress,
 				statsItem.ingressCount,
 				statsItem.targetBitrate,
+				statsItem.bufferCount,
 			))
 			if err != nil {
 				slog.Error("failed to write pacer stats to file", "error", err)

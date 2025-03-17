@@ -63,8 +63,8 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	// pacer := gcc.NewLeakyBucketPacer(1_000_000 * 1.5)
-	pacer := gcc.NewNoOpPacer()
+	pacer := gcc.NewLeakyBucketPacer(int(float32(sessionConfig.CodecConfig.InitialBitrate) * 1.5))
+	// pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
 			gcc.SendSideBWEInitialBitrate(sessionConfig.CodecConfig.InitialBitrate),
@@ -288,7 +288,6 @@ func (pc *PeerConnectionThread) Spin() {
 }
 
 func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadevices.CodecSelector, error) {
-	slog.Info("Configuring codec", "codecConfig", config.Codec)
 	var codecSelectorOption mediadevices.CodecSelectorOption
 	switch config.Codec {
 	case "av1_nvenc":
