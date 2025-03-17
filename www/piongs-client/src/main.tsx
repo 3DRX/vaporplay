@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FormType, GameInfoType } from "@/lib/types";
+import { CodecInfoType, FormType, GameInfoType } from "@/lib/types";
 import Gameplay from "@/components/gameplay";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GamepadTest from "@/components/gamepad-test";
@@ -40,10 +40,16 @@ createRoot(document.getElementById("root")!).render(
 function App() {
   const [startGame, setStartGame] = useState(false);
   const [server, setServer] = useLocalStorage("piongs-client-server", "");
+  const [codec, setCodec] = useLocalStorage<CodecInfoType>(
+    "piongs-client-codec",
+    {
+      codec: "h264_nvenc",
+      initial_bitrate: 5_000_000,
+      frame_rate: 60,
+      max_bitrate: 30_000_000,
+    },
+  );
   const [game, setGame] = useState<GameInfoType | null>(null);
-  // const [config, setConfig] = useLocalStorage<Config>("piongs-client-config", {
-  //   showDebugInfo: true,
-  // });
 
   function onSubmit(values: FormType) {
     if (values.server) {
@@ -52,11 +58,25 @@ function App() {
     if (values.game) {
       setGame(values.game);
     }
+    setCodec({
+      codec: values.codec,
+      frame_rate: values.frame_rate,
+      initial_bitrate: values.initial_bitrate,
+      max_bitrate: values.max_bitrate,
+    });
     setStartGame(true);
   }
 
-  function onFirstSubmit(server: string) {
-    setServer(server);
+  function onFirstSubmit(values: FormType) {
+    if (values.server) {
+      setServer(values.server);
+    }
+    setCodec({
+      codec: values.codec,
+      frame_rate: values.frame_rate,
+      initial_bitrate: values.initial_bitrate,
+      max_bitrate: values.max_bitrate,
+    });
   }
 
   const onExit = useCallback(() => setStartGame(false), []);
@@ -64,7 +84,7 @@ function App() {
   return (
     <div className="max-h-svh">
       {server.length !== 0 && startGame && game ? (
-        <Gameplay server={server} game={game} onExit={onExit} />
+        <Gameplay server={server} game={game} codec={codec} onExit={onExit} />
       ) : (
         <>
           <Card className="mx-auto mt-10 max-w-[60rem]">
@@ -75,6 +95,7 @@ function App() {
             <CardContent>
               <ConnectionForm
                 defaultServer={server}
+                defaultCodec={codec}
                 onSubmit={onSubmit}
                 onFirstSubmit={onFirstSubmit}
               />

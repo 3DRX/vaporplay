@@ -17,7 +17,16 @@ export const gameInfos = z.array(gameInfo);
 
 export type GameInfoType = z.infer<typeof gameInfo>;
 
-export const formSchema = z.object({
+export const codecInfo = z.object({
+  codec: z.string().nonempty(),
+  initial_bitrate: z.number(),
+  frame_rate: z.number(),
+  max_bitrate: z.number(),
+});
+
+export type CodecInfoType = z.infer<typeof codecInfo>;
+
+export const formSchema = codecInfo.extend({
   server: z.string().nonempty(),
   game: gameInfo,
 });

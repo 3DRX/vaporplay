@@ -32,14 +32,14 @@ func main() {
 		recvCandidateChan,
 	)
 	haveReceiverPromise := signalingThread.Spin()
-	selectedGame := <-haveReceiverPromise
+	sessionConfig := <-haveReceiverPromise
 
 	peerConnectionThread := peerconnection.NewPeerConnectionThread(
 		sendSDPChan,
 		recvSDPChan,
 		sendCandidateChan,
 		recvCandidateChan,
-		selectedGame,
+		sessionConfig,
 		*cpuProfile,
 	)
 	peerConnectionThread.Spin()

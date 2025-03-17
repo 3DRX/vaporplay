@@ -17,6 +17,18 @@ type KillProcessCommandConfig struct {
 	ProcessName string   `json:"process_name"`
 }
 
+type SessionConfig struct {
+	GameConfig  GameConfig  `json:"game_config"`
+	CodecConfig CodecConfig `json:"codec_config"`
+}
+
+type CodecConfig struct {
+	Codec          string  `json:"codec"`
+	InitialBitrate int     `json:"initial_bitrate"`
+	FrameRate      float32 `json:"frame_rate"`
+	MaxBitrate     int     `json:"max_bitrate"`
+}
+
 type GameConfig struct {
 	GameId          string                     `json:"game_id"`
 	GameWindowName  string                     `json:"game_window_name"`

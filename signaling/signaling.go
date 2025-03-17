@@ -16,7 +16,7 @@ type SignalingThread struct {
 	cfg                 *config.Config
 	upgrader            *websocket.Upgrader
 	conn                *websocket.Conn
-	haveReceiverPromise chan *config.GameConfig
+	haveReceiverPromise chan *config.SessionConfig
 	sendSDPChan         <-chan webrtc.SessionDescription
 	recvSDPChan         chan<- webrtc.SessionDescription
 	sendCandidateChan   <-chan webrtc.ICECandidateInit
@@ -40,7 +40,7 @@ func NewSignalingThread(
 			},
 		},
 		conn:                nil,
-		haveReceiverPromise: make(chan *config.GameConfig),
+		haveReceiverPromise: make(chan *config.SessionConfig),
 		sendSDPChan:         sendSDPChan,
 		recvSDPChan:         recvSDPChan,
 		sendCandidateChan:   sendCandidateChan,
@@ -49,7 +49,7 @@ func NewSignalingThread(
 	}
 }
 
-func (s *SignalingThread) Spin() <-chan *config.GameConfig {
+func (s *SignalingThread) Spin() <-chan *config.SessionConfig {
 	mux := http.NewServeMux()
 	mux.Handle("GET /games", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jsonGames, err := json.Marshal(s.cfg.Games)
@@ -140,7 +140,7 @@ func (s *SignalingThread) handleRecvMessages() {
 			slog.Error("websocket read error", "error", err)
 			return
 		}
-		selectedGame := &config.GameConfig{}
+		selectedGame := &config.SessionConfig{}
 		err = json.Unmarshal(message, selectedGame)
 		if err != nil {
 			s.connecting = false

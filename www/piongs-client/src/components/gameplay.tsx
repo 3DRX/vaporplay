@@ -1,6 +1,6 @@
 import useWebSocket from "react-use-websocket";
 import { useEffect, useRef, useState } from "react";
-import { GameInfoType } from "@/lib/types";
+import { CodecInfoType, GameInfoType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import useGamepad from "@/hooks/use-gamepad";
 import { toGamepadStateDto } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { toGamepadStateDto } from "@/lib/utils";
 export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
+  codec: CodecInfoType;
   onExit?: () => void;
 }) {
   const [showTopBar, setShowTopBar] = useState(true);
@@ -42,7 +43,12 @@ export default function Gameplay(props: {
       }
     },
     onOpen: () => {
-      ws.sendMessage(JSON.stringify(props.game));
+      ws.sendMessage(
+        JSON.stringify({
+          game_config: props.game,
+          codec_config: props.codec,
+        }),
+      );
     },
   });
   const [stats, setStats] = useState({
@@ -82,7 +88,10 @@ export default function Gameplay(props: {
               ((stat.timestamp - prev.timestamp) / 1000),
             packetsLost: stat.packetsLost,
             frameRate: stat.framesPerSecond,
-            resolution: `${stat.frameWidth}x${stat.frameHeight}`,
+            resolution:
+              stat.frameWidth && stat.frameHeight
+                ? `${stat.frameWidth}x${stat.frameHeight}`
+                : prev.resolution,
             totalInterFrameDelay: stat.totalInterFrameDelay,
             interFrameDelay:
               (stat.totalInterFrameDelay - prev.totalInterFrameDelay) /
@@ -177,7 +186,9 @@ export default function Gameplay(props: {
       {/* Floating top bar */}
       {showTopBar && (
         <div className="absolute left-0 right-0 top-0 z-50 flex touch-none items-center justify-between bg-black/50 px-4 backdrop-blur-sm">
-          <h1 className="text-lg font-bold text-white">PionGS Gameplay</h1>
+          <h1 className="hidden text-lg font-bold text-white sm:block">
+            PionGS Gameplay
+          </h1>
           <div className="flex space-x-4 text-sm text-white/80">
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Bitrate</span>

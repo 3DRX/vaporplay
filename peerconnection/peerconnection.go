@@ -2,6 +2,7 @@ package peerconnection
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -53,35 +54,21 @@ func NewPeerConnectionThread(
 	recvSDPChan <-chan webrtc.SessionDescription,
 	sendCandidateChan chan<- webrtc.ICECandidateInit,
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
-	selectedGame *config.GameConfig,
+	sessionConfig *config.SessionConfig,
 	cpuProfile string,
 ) *PeerConnectionThread {
-	params, err := ffmpeg.NewAV1NVENCParams(
-		"/dev/dri/card1",
-		astiav.PixelFormat(astiav.PixelFormatBgra),
-	)
-	// params, err := ffmpeg.NewH264VAAPIParams(
-	// 	"/dev/dri/card0",
-	// 	astiav.PixelFormat(astiav.PixelFormatArgb),
-	// )
+	m := &webrtc.MediaEngine{}
+	i := &interceptor.Registry{}
+	codecselector, err := configureCodec(m, sessionConfig.CodecConfig)
 	if err != nil {
 		panic(err)
 	}
-	params.BitRate = 5_000_000
-	params.FrameRate = 90
-	params.KeyFrameInterval = -1
-	codecselector := mediadevices.NewCodecSelector(
-		mediadevices.WithVideoEncoders(&params),
-	)
-	m := &webrtc.MediaEngine{}
-	codecselector.Populate(m)
-	i := &interceptor.Registry{}
 	// pacer := gcc.NewLeakyBucketPacer(1_000_000 * 1.5)
 	pacer := gcc.NewNoOpPacer()
 	congestionControllerFactory, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(params.BitRate),
-			gcc.SendSideBWEMaxBitrate(30_000_000),
+			gcc.SendSideBWEInitialBitrate(sessionConfig.CodecConfig.InitialBitrate),
+			gcc.SendSideBWEMaxBitrate(sessionConfig.CodecConfig.MaxBitrate),
 			gcc.SendSideBWEMinBitrate(500_000),
 			gcc.SendSideBWEPacer(pacer),
 		)
@@ -114,13 +101,13 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 
-	videoDriverLabel := gamecapture.Initialize(selectedGame)
+	videoDriverLabel := gamecapture.Initialize(&sessionConfig.GameConfig)
 
 	mediaStream, err := mediadevices.GetUserMedia(mediadevices.MediaStreamConstraints{
 		Video: func(constraint *mediadevices.MediaTrackConstraints) {
 			constraint.Width = prop.Int(1920)
 			constraint.Height = prop.Int(1080)
-			constraint.FrameRate = prop.Float(params.FrameRate)
+			constraint.FrameRate = prop.Float(sessionConfig.CodecConfig.FrameRate)
 		},
 		Codec: codecselector,
 	})
@@ -154,7 +141,7 @@ func NewPeerConnectionThread(
 		sendCandidateChan: sendCandidateChan,
 		recvCandidateChan: recvCandidateChan,
 		peerConnection:    peerConnection,
-		gameConfig:        selectedGame,
+		gameConfig:        &sessionConfig.GameConfig,
 		gamepadControl:    gamepadControl,
 		estimatorChan:     estimatorChan,
 		cpuProfile:        cpuProfile,
@@ -298,4 +285,59 @@ func (pc *PeerConnectionThread) Spin() {
 		}
 		slog.Info("peer connection thread closed")
 	}
+}
+
+func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadevices.CodecSelector, error) {
+	slog.Info("Configuring codec", "codecConfig", config.Codec)
+	var codecSelectorOption mediadevices.CodecSelectorOption
+	switch config.Codec {
+	case "av1_nvenc":
+		params, err := ffmpeg.NewAV1NVENCParams(
+			"/dev/dri/card1",
+			astiav.PixelFormat(astiav.PixelFormatBgra),
+		)
+		if err != nil {
+			return nil, err
+		}
+		params.BitRate = config.InitialBitrate
+		params.FrameRate = config.FrameRate
+		params.KeyFrameInterval = -1
+		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
+	case "hevc_nvenc":
+		params, err := ffmpeg.NewH265NVENCParams(
+			"/dev/dri/card1",
+			astiav.PixelFormat(astiav.PixelFormatBgra),
+		)
+		if err != nil {
+			return nil, err
+		}
+		params.BitRate = config.InitialBitrate
+		params.FrameRate = config.FrameRate
+		params.KeyFrameInterval = -1
+		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
+	case "h264_nvenc":
+		params, err := ffmpeg.NewH264NVENCParams(
+			"/dev/dri/card1",
+			astiav.PixelFormat(astiav.PixelFormatBgra),
+		)
+		if err != nil {
+			return nil, err
+		}
+		params.BitRate = config.InitialBitrate
+		params.FrameRate = config.FrameRate
+		params.KeyFrameInterval = -1
+		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
+	default:
+		return nil, fmt.Errorf("unsupported codec %s", config.Codec)
+		// TODO: vaapi
+		// params, err := ffmpeg.NewH264VAAPIParams(
+		// 	"/dev/dri/card0",
+		// 	astiav.PixelFormat(astiav.PixelFormatArgb),
+		// )
+		// params.BitRate = 5_000_000
+		// params.FrameRate = 90
+	}
+	codecselector := mediadevices.NewCodecSelector(codecSelectorOption)
+	codecselector.Populate(m)
+	return codecselector, nil
 }

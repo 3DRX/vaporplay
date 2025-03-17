@@ -177,7 +177,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 		p.FrameRate = params.FrameRate
 	}
 	slog.Info("creating new encoder", "params", params, "props", p)
-	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelDebug))
+	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
 	var hardwareDeviceType astiav.HardwareDeviceType
 	switch params.codecName {
