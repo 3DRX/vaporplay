@@ -152,8 +152,7 @@ func (e *SendSideBWE) AddStream(info *interceptor.StreamInfo, writer interceptor
 	var hdrExtID uint8
 	for _, e := range info.RTPHeaderExtensions {
 		if e.URI == transportCCURI {
-			hdrExtID = uint8(e.ID) //nolint:gosec // G115
-
+			hdrExtID = uint8(e.ID)
 			break
 		}
 	}
@@ -372,8 +371,8 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 						p.SequenceNumber,
 						p.SSRC,
 						p.Size,
-						int64(float64(p.Departure.UnixNano())/1e+6),
-						int64(float64(p.Arrival.UnixNano())/1e+6),
+						int64(float64(p.Departure.UnixMilli())),
+						int64(float64(p.Arrival.UnixMilli())),
 						p.ECN,
 					),
 				)

@@ -60,6 +60,7 @@ export default function Gameplay(props: {
     resolution: "0x0",
     totalInterFrameDelay: 0, // s
     interFrameDelay: 0,
+    rtt: 0,
     codec: "",
   });
 
@@ -76,8 +77,13 @@ export default function Gameplay(props: {
             codec: stat.mimeType,
           }));
         }
+        if (stat.type === "candidate-pair" && stat.state === "succeeded") {
+          setStats((prev) => ({
+            ...prev,
+            rtt: stat.currentRoundTripTime,
+          }));
+        }
         if (stat.type === "inbound-rtp" && stat.kind === "video") {
-          console.log(stat);
           setStats((prev) => ({
             ...prev,
             timestamp: stat.timestamp,
@@ -193,6 +199,10 @@ export default function Gameplay(props: {
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Bitrate</span>
               <span>{stats.bitrate.toFixed(2)} Mbps</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">RTT</span>
+              <span>{stats.rtt ? (stats.rtt * 1000).toFixed(2) : "0"} ms</span>
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Frame Rate</span>

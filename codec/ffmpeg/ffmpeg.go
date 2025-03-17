@@ -307,7 +307,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	}
 
 	statsItemChan := make(chan StatsItem, 100)
-	go StatsThread(statsItemChan)
+	// go StatsThread(statsItemChan)
 
 	return &hardwareEncoder{
 		codec:          codec,
@@ -376,9 +376,9 @@ func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 		break
 	}
 
-	e.statsItemChan <- StatsItem{
-		FrameSize: e.packet.Size(),
-	}
+	// e.statsItemChan <- StatsItem{
+	// 	FrameSize: e.packet.Size(),
+	// }
 	data := make([]byte, e.packet.Size())
 	copy(data, e.packet.Data())
 	e.packet.Unref()
