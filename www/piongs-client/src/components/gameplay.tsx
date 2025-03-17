@@ -105,7 +105,7 @@ export default function Gameplay(props: {
           }));
         }
       }
-    }, 3000);
+    }, 1000);
 
     return () => clearInterval(statsInterval);
   }, []);
