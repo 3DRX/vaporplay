@@ -33,6 +33,7 @@ type FeedbackAdapter struct {
 	history                       *feedbackHistory
 	lastTransportFeedbackBaseTime time.Time
 	currentOffset                 time.Time
+	frameID                       uint16
 }
 
 // NewFeedbackAdapter returns a new FeedbackAdapter.
@@ -41,6 +42,7 @@ func NewFeedbackAdapter() *FeedbackAdapter {
 		history:                       newFeedbackHistory(250),
 		lastTransportFeedbackBaseTime: time.Time{}.Add(kMinusInfinity),
 		currentOffset:                 time.Time{}.Add(kMinusInfinity),
+		frameID:                       1,
 	}
 }
 
@@ -72,12 +74,20 @@ func (f *FeedbackAdapter) onSentTWCC(ts time.Time, extID uint8, header *rtp.Head
 	defer f.lock.Unlock()
 	f.history.add(Acknowledgment{
 		SequenceNumber: tccExt.TransportSequence,
-		SSRC:           0,
+		SSRC:           header.SSRC,
 		Size:           header.MarshalSize() + size,
 		Departure:      ts,
 		Arrival:        time.Time{},
 		ECN:            0,
+
+		Stats: AcknowledgmentStats{
+			FrameID: f.frameID,
+		},
 	})
+
+	if header.Marker {
+		f.frameID++
+	}
 
 	return nil
 }

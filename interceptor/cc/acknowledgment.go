@@ -10,6 +10,11 @@ import (
 	"github.com/pion/rtcp"
 )
 
+// only for stats, not used in cc algorithms
+type AcknowledgmentStats struct {
+	FrameID uint16 // if not video, set to 0, otherwise a sequence number start from 1
+}
+
 // Acknowledgment holds information about a packet and if/when it has been
 // sent/received.
 type Acknowledgment struct {
@@ -19,6 +24,9 @@ type Acknowledgment struct {
 	Departure      time.Time
 	Arrival        time.Time
 	ECN            rtcp.ECN
+
+	// only for stats, not used in cc algorithms
+	Stats AcknowledgmentStats
 }
 
 func (a Acknowledgment) String() string {

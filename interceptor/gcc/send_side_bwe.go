@@ -62,8 +62,10 @@ type SendSideBWE struct {
 	close     chan struct{}
 	closeLock sync.RWMutex
 
-	statsChan   chan []cc.Acknowledgment
-	rfc8888Chan chan []cc.Acknowledgment
+	statsChan       chan []cc.Acknowledgment
+	rfc8888Chan     chan []cc.Acknowledgment
+	latestStatsChan chan Stats
+	rttChan         chan time.Duration
 }
 
 // Option configures a bandwidth estimator.
@@ -109,6 +111,8 @@ func SendSideBWEPacer(p Pacer) Option {
 func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 	statsChan := make(chan []cc.Acknowledgment, 100)
 	rfc8888Chan := make(chan []cc.Acknowledgment, 100)
+	latestStatsChan := make(chan Stats, 100)
+	rttChan := make(chan time.Duration, 100)
 	send := &SendSideBWE{
 		pacer:                 nil,
 		lossController:        nil,
@@ -123,6 +127,8 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 		close:                 make(chan struct{}),
 		statsChan:             statsChan,
 		rfc8888Chan:           rfc8888Chan,
+		latestStatsChan:       latestStatsChan,
+		rttChan:               rttChan,
 	}
 	for _, opt := range opts {
 		if err := opt(send); err != nil {
@@ -142,7 +148,7 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 
 	send.delayController.onUpdate(send.onDelayUpdate)
 
-	go StatsThread(statsChan, rfc8888Chan)
+	go StatsThread(statsChan, rfc8888Chan, latestStatsChan, rttChan)
 
 	return send, nil
 }
@@ -230,6 +236,7 @@ func (e *SendSideBWE) WriteRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) er
 			// 	feedbackMinRTT,
 			// )
 			e.statsChan <- acks
+			e.rttChan <- feedbackMinRTT
 
 			e.lossController.updateLossEstimate(acks)
 			e.delayController.updateDelayEstimate(acks)
@@ -321,15 +328,18 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 		LossStats:  lossStats,
 		DelayStats: delayStats,
 	}
+	e.latestStatsChan <- e.latestStats
 }
 
-func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Acknowledgment) {
-	f, err := os.Create("transport_packets_feedback.csv")
+////// stats only
+
+func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Acknowledgment, gccStatsChan chan Stats, rttChan chan time.Duration) {
+	f, err := os.Create("gcc_stats.csv")
 	if err != nil {
 		panic(err)
 	}
 	w := bufio.NewWriter(f)
-	w.WriteString("sequence_number,ssrc,size,departure,arrival,ecn\n")
+	w.WriteString("frame_size,loss_packets_counts,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
 	defer f.Close()
 	f2, err := os.Create("rfc8888.csv")
 	if err != nil {
@@ -343,16 +353,23 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 	for {
 		select {
 		case statsItem := <-statsChan:
-			for _, p := range statsItem {
+			rtt := <-rttChan
+			gccStats := <-gccStatsChan
+			delayGradBeforeKalman := gccStats.DelayStats.Measurement.Microseconds()
+			delayGradAfterKalman := gccStats.DelayStats.Estimate.Microseconds()
+			gccBw := minInt(gccStats.DelayStats.TargetBitrate, gccStats.LossStats.TargetBitrate)
+			for _, frame := range groupByFrame(statsItem) {
+				frameSize := len(frame)
+				lossPacketsCount := getLossPacketsCounts(frame)
 				_, err := w.WriteString(
 					fmt.Sprintf(
 						"%d,%d,%d,%d,%d,%d\n",
-						p.SequenceNumber,
-						p.SSRC,
-						p.Size,
-						int64(float64(p.Departure.UnixNano())/1e+6),
-						int64(float64(p.Arrival.UnixNano())/1e+6),
-						p.ECN,
+						frameSize,
+						lossPacketsCount,
+						delayGradBeforeKalman,
+						delayGradAfterKalman,
+						gccBw,
+						rtt.Milliseconds(),
 					),
 				)
 				if err != nil {
@@ -386,4 +403,30 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 			index2++
 		}
 	}
+}
+
+func groupByFrame(acks []cc.Acknowledgment) [][]cc.Acknowledgment {
+	groupedMap := make(map[uint16][]cc.Acknowledgment)
+	for _, ack := range acks {
+		groupedMap[ack.Stats.FrameID] = append(groupedMap[ack.Stats.FrameID], ack)
+	}
+	grouped := make([][]cc.Acknowledgment, 0, len(groupedMap))
+	// ensure the order of the frames
+	for i := acks[0].Stats.FrameID; i < acks[len(acks)-1].Stats.FrameID; i++ {
+		frame, ok := groupedMap[i]
+		if ok {
+			grouped = append(grouped, frame)
+		}
+	}
+	return grouped
+}
+
+func getLossPacketsCounts(frame []cc.Acknowledgment) int {
+	count := 0
+	for _, ack := range frame {
+		if ack.Arrival.IsZero() {
+			count++
+		}
+	}
+	return count
 }
