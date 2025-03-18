@@ -85,21 +85,30 @@ func (c *rateController) updateRTT(rtt time.Duration) {
 func (c *rateController) onDelayStats(ds DelayStats) {
 	now := time.Now()
 
+	c.delayStats = ds
+	next := DelayStats{
+		Measurement:      c.delayStats.Measurement,
+		Estimate:         c.delayStats.Estimate,
+		Threshold:        c.delayStats.Threshold,
+		LastReceiveDelta: c.delayStats.LastReceiveDelta,
+		Usage:            c.delayStats.Usage,
+		State:            c.delayStats.State,
+		TargetBitrate:    c.target,
+	}
+
 	if !c.init {
-		c.delayStats = ds
 		c.delayStats.State = stateIncrease
 		c.init = true
 
+		c.dsWriter(next)
 		return
 	}
-	c.delayStats = ds
 	c.delayStats.State = c.delayStats.State.transition(ds.Usage)
 
 	if c.delayStats.State == stateHold {
+		c.dsWriter(next)
 		return
 	}
-
-	var next DelayStats
 
 	c.lock.Lock()
 
@@ -132,7 +141,6 @@ func (c *rateController) onDelayStats(ds DelayStats) {
 	}
 
 	c.lock.Unlock()
-
 	c.dsWriter(next)
 }
 

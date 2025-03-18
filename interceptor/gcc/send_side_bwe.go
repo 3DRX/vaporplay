@@ -228,13 +228,6 @@ func (e *SendSideBWE) WriteRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) er
 				e.delayController.updateRTT(feedbackMinRTT)
 			}
 
-			// slog.Info(
-			// 	"OnTransportPacketsFeedback",
-			// 	"len(acks)",
-			// 	len(acks),
-			// 	"feedbackMinRTT",
-			// 	feedbackMinRTT,
-			// )
 			e.statsChan <- acks
 			e.rttChan <- feedbackMinRTT
 
@@ -339,7 +332,7 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 		panic(err)
 	}
 	w := bufio.NewWriter(f)
-	w.WriteString("frame_size,loss_packets_counts,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
+	w.WriteString("frame_size,loss_packets_counts,threshold,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
 	defer f.Close()
 	f2, err := os.Create("rfc8888.csv")
 	if err != nil {
@@ -357,15 +350,17 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 			gccStats := <-gccStatsChan
 			delayGradBeforeKalman := gccStats.DelayStats.Measurement.Microseconds()
 			delayGradAfterKalman := gccStats.DelayStats.Estimate.Microseconds()
+			threshold := gccStats.DelayStats.Threshold.Microseconds()
 			gccBw := minInt(gccStats.DelayStats.TargetBitrate, gccStats.LossStats.TargetBitrate)
 			for _, frame := range groupByFrame(statsItem) {
 				frameSize := len(frame)
 				lossPacketsCount := getLossPacketsCounts(frame)
 				_, err := w.WriteString(
 					fmt.Sprintf(
-						"%d,%d,%d,%d,%d,%d\n",
+						"%d,%d,%d,%d,%d,%d,%d\n",
 						frameSize,
 						lossPacketsCount,
+						threshold,
 						delayGradBeforeKalman,
 						delayGradAfterKalman,
 						gccBw,
@@ -376,7 +371,7 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 					slog.Error("failed to transport packets feedback to file", "error", err)
 				}
 			}
-			if index%270 == 0 {
+			if index%20 == 0 {
 				w.Flush()
 			}
 			index++

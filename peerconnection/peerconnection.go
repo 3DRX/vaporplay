@@ -69,7 +69,7 @@ func NewPeerConnectionThread(
 		return gcc.NewSendSideBWE(
 			gcc.SendSideBWEInitialBitrate(sessionConfig.CodecConfig.InitialBitrate),
 			gcc.SendSideBWEMaxBitrate(sessionConfig.CodecConfig.MaxBitrate),
-			gcc.SendSideBWEMinBitrate(100_000),
+			gcc.SendSideBWEMinBitrate(500_000),
 			gcc.SendSideBWEPacer(pacer),
 		)
 	})

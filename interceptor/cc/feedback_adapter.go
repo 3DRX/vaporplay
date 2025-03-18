@@ -74,7 +74,7 @@ func (f *FeedbackAdapter) onSentTWCC(ts time.Time, extID uint8, header *rtp.Head
 	defer f.lock.Unlock()
 	f.history.add(Acknowledgment{
 		SequenceNumber: tccExt.TransportSequence,
-		SSRC:           header.SSRC,
+		SSRC:           0,
 		Size:           header.MarshalSize() + size,
 		Departure:      ts,
 		Arrival:        time.Time{},

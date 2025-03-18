@@ -24,44 +24,56 @@ func newArrivalGroupAccumulator() *arrivalGroupAccumulator {
 }
 
 func (a *arrivalGroupAccumulator) run(in <-chan []cc.Acknowledgment, agWriter func(arrivalGroup)) {
-	init := false
-	group := arrivalGroup{}
+	// only one group
 	for acks := range in {
-		for _, next := range acks {
-			if !init {
-				group = newArrivalGroup(next)
-				init = true
-
-				continue
-			}
-			if next.Arrival.Before(group.arrival) {
-				// ignore out of order arrivals
-				continue
-			}
-			if next.Departure.After(group.departure) {
-				// A sequence of packets which are sent within a burst_time interval
-				// constitute a group.
-				if interDepartureTimePkt(group, next) <= a.interDepartureThreshold {
-					group.add(next)
-
-					continue
-				}
-
-				// A Packet which has an inter-arrival time less than burst_time and
-				// an inter-group delay variation d(i) less than 0 is considered
-				// being part of the current group of packets.
-				if interArrivalTimePkt(group, next) <= a.interArrivalThreshold &&
-					interGroupDelayVariationPkt(group, next) < a.interGroupDelayVariationTreshold {
-					group.add(next)
-
-					continue
-				}
-
-				agWriter(group)
-				group = newArrivalGroup(next)
-			}
+		group := arrivalGroup{
+			packets:   acks,
+			departure: acks[0].Departure,
+			arrival:   acks[len(acks)-1].Arrival,
 		}
+		agWriter(group)
 	}
+
+	///// old
+
+	// init := false
+	// group := arrivalGroup{}
+	// for acks := range in {
+	// 	for _, next := range acks {
+	// 		if !init {
+	// 			group = newArrivalGroup(next)
+	// 			init = true
+
+	// 			continue
+	// 		}
+	// 		if next.Arrival.Before(group.arrival) {
+	// 			// ignore out of order arrivals
+	// 			continue
+	// 		}
+	// 		if next.Departure.After(group.departure) {
+	// 			// A sequence of packets which are sent within a burst_time interval
+	// 			// constitute a group.
+	// 			if interDepartureTimePkt(group, next) <= a.interDepartureThreshold {
+	// 				group.add(next)
+
+	// 				continue
+	// 			}
+
+	// 			// A Packet which has an inter-arrival time less than burst_time and
+	// 			// an inter-group delay variation d(i) less than 0 is considered
+	// 			// being part of the current group of packets.
+	// 			if interArrivalTimePkt(group, next) <= a.interArrivalThreshold &&
+	// 				interGroupDelayVariationPkt(group, next) < a.interGroupDelayVariationTreshold {
+	// 				group.add(next)
+
+	// 				continue
+	// 			}
+
+	// 			agWriter(group)
+	// 			group = newArrivalGroup(next)
+	// 		}
+	// 	}
+	// }
 }
 
 func interArrivalTimePkt(group arrivalGroup, ack cc.Acknowledgment) time.Duration {
