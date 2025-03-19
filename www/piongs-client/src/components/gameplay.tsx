@@ -5,6 +5,21 @@ import { Button } from "@/components/ui/button";
 import useGamepad from "@/hooks/use-gamepad";
 import { toGamepadStateDto } from "@/lib/utils";
 
+type StatsType = {
+  timestamp: number;
+  bytesReceived: number;
+  bitrate: number;
+  nackCount: number;
+  packetsReceived: number;
+  frameRate: number;
+  resolution: string;
+  totalInterFrameDelay: number;
+  interFrameDelay: number;
+  rtt: number | undefined;
+  codec: string;
+  loss: number;
+};
+
 export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
@@ -51,17 +66,19 @@ export default function Gameplay(props: {
       );
     },
   });
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<StatsType>({
     timestamp: 0,
     bytesReceived: 0,
     bitrate: 0, // Mbps
-    packetsLost: 0,
+    nackCount: 0,
+    packetsReceived: 0,
     frameRate: 0,
     resolution: "0x0",
     totalInterFrameDelay: 0, // s
     interFrameDelay: 0,
-    rtt: 0,
+    rtt: undefined,
     codec: "",
+    loss: 0,
   });
 
   // Stats collection interval
@@ -92,7 +109,8 @@ export default function Gameplay(props: {
               ((stat.bytesReceived - prev.bytesReceived) * 8) /
               1_000_000 /
               ((stat.timestamp - prev.timestamp) / 1000),
-            packetsLost: stat.packetsLost,
+            nackCount: stat.nackCount,
+            packetsReceived: stat.packetsReceived,
             frameRate: stat.framesPerSecond,
             resolution:
               stat.frameWidth && stat.frameHeight
@@ -102,6 +120,10 @@ export default function Gameplay(props: {
             interFrameDelay:
               (stat.totalInterFrameDelay - prev.totalInterFrameDelay) /
               ((stat.timestamp - prev.timestamp) / 1000),
+            loss:
+              ((stat.nackCount - prev.nackCount) /
+                (stat.packetsReceived - prev.packetsReceived)) *
+              100,
           }));
         }
       }
@@ -195,14 +217,20 @@ export default function Gameplay(props: {
           <h1 className="hidden text-lg font-bold text-white sm:block">
             PionGS Gameplay
           </h1>
-          <div className="flex space-x-4 text-sm text-white/80">
+          <div className="flex flex-wrap space-x-4 text-sm text-white/80">
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Bitrate</span>
               <span>{stats.bitrate.toFixed(2)} Mbps</span>
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-white/60">RTT</span>
-              <span>{stats.rtt ? (stats.rtt * 1000).toFixed(2) : "0"} ms</span>
+              <span>
+                {stats.rtt ? (stats.rtt * 1000).toFixed(2) + " ms" : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Loss</span>
+              <span>{stats.loss.toFixed(2) + "%"}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Frame Rate</span>
