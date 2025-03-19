@@ -14,6 +14,7 @@ import (
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/3DRX/piongs/interceptor/cc"
 	"github.com/3DRX/piongs/interceptor/gcc"
+	"github.com/3DRX/piongs/interceptor/nack"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/interceptor"
 
@@ -80,9 +81,13 @@ func NewPeerConnectionThread(
 	congestionControllerFactory.OnNewPeerConnection(func(id string, estimator cc.BandwidthEstimator) { //nolint: revive
 		estimatorChan <- estimator
 	})
-	if err := webrtc.ConfigureNack(m, i); err != nil {
+	nackResponder, err := nack.NewResponderInterceptor()
+	if err != nil {
 		panic(err)
 	}
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
+	i.Add(nackResponder)
 	i.Add(congestionControllerFactory)
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
 		panic(err)
@@ -212,6 +217,11 @@ func (pc *PeerConnectionThread) Spin() {
 					slog.Warn("bitrate controller is nil")
 					return
 				}
+				// nackBitrate := nack.GetBitrate()
+				// slog.Info("nack bitrate", "bitrate", nackBitrate)
+				// TODO: minus nack bitrate here
+				// TODO: minus FEC bitrate here
+				// TODO: minus audio bitrate here
 				slog.Info("setting bitrate", "bitrate", bitrate)
 				bitrateController.SetBitRate(bitrate)
 			})

@@ -173,24 +173,24 @@ func (f *FeedbackAdapter) OnTransportCCFeedback(
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
-	baseTime := getBaseTime(feedback)
-	if f.lastTransportFeedbackBaseTime == tpi || f.lastTransportFeedbackBaseTime == tmi {
-		f.currentOffset = now
-	} else {
-		delta := getBaseDelta(baseTime, f.lastTransportFeedbackBaseTime)
-		tzero := time.Time{}.Add(kZero)
-		if delta < tzero.Sub(f.currentOffset) {
-			f.currentOffset = now
-		} else {
-			f.currentOffset = f.currentOffset.Add(delta)
-		}
-	}
-	f.lastTransportFeedbackBaseTime = baseTime
+	// baseTime := getBaseTime(feedback)
+	// if f.lastTransportFeedbackBaseTime == tpi || f.lastTransportFeedbackBaseTime == tmi {
+	// 	f.currentOffset = now
+	// } else {
+	// 	delta := getBaseDelta(baseTime, f.lastTransportFeedbackBaseTime)
+	// 	tzero := time.Time{}.Add(kZero)
+	// 	if delta < tzero.Sub(f.currentOffset) {
+	// 		f.currentOffset = now
+	// 	} else {
+	// 		f.currentOffset = f.currentOffset.Add(delta)
+	// 	}
+	// }
+	// f.lastTransportFeedbackBaseTime = baseTime
 
 	result := []Acknowledgment{}
 	index := feedback.BaseSequenceNumber
-	refTime := f.currentOffset
-	// refTimeOld := time.Time{}.Add(time.Duration(feedback.ReferenceTime) * 64 * time.Millisecond)
+	// refTime := f.currentOffset
+	refTime := time.Time{}.Add(time.Duration(feedback.ReferenceTime) * 64 * time.Millisecond)
 	// slog.Info("OnTransportCCFeedback", "refTime", refTime, "refTimeOld", refTimeOld)
 	recvDeltas := feedback.RecvDeltas
 
