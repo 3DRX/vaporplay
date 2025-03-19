@@ -5,6 +5,7 @@ package nack
 
 import (
 	"sync"
+	"time"
 
 	"github.com/3DRX/piongs/interceptor/rtpbuffer"
 	"github.com/pion/interceptor"
@@ -41,10 +42,12 @@ func (r *ResponderInterceptorFactory) NewInterceptor(_ string) (interceptor.Inte
 		return nil, err
 	}
 
+	instance = responderInterceptor
+
 	return responderInterceptor, nil
 }
 
-// ResponderInterceptor responds to nack feedback messages.
+// ResponderInterceptor responds to nack feedback messages and tracks NACK bitrate.
 type ResponderInterceptor struct {
 	interceptor.NoOp
 	streamsFilter func(info *interceptor.StreamInfo) bool
@@ -54,6 +57,10 @@ type ResponderInterceptor struct {
 
 	streams   map[uint32]*localStream
 	streamsMu sync.Mutex
+
+	resendBytes uint64
+	startTime   time.Time
+	mu          sync.Mutex
 }
 
 type localStream struct {
@@ -61,6 +68,8 @@ type localStream struct {
 	rtpBufferMutex sync.RWMutex
 	rtpWriter      interceptor.RTPWriter
 }
+
+var instance *ResponderInterceptor
 
 // NewResponderInterceptor returns a new ResponderInterceptorFactor.
 func NewResponderInterceptor(opts ...ResponderOption) (*ResponderInterceptorFactory, error) {
@@ -143,6 +152,7 @@ func (n *ResponderInterceptor) UnbindLocalStream(info *interceptor.StreamInfo) {
 	n.streamsMu.Unlock()
 }
 
+// resendPackets resends packets based on the NACK feedback and tracks the bytes sent.
 func (n *ResponderInterceptor) resendPackets(nack *rtcp.TransportLayerNack) {
 	n.streamsMu.Lock()
 	stream, ok := n.streams[nack.MediaSSRC]
@@ -158,9 +168,17 @@ func (n *ResponderInterceptor) resendPackets(nack *rtcp.TransportLayerNack) {
 			if p := stream.rtpBuffer.Get(seq); p != nil {
 				header := p.Header()
 				payload := p.Payload()
-				// size := uint64(header.MarshalSize()) + uint64(len(payload))
+				size := uint64(header.MarshalSize()) + uint64(len(payload))
+
 				if _, err := stream.rtpWriter.Write(header, payload, interceptor.Attributes{}); err != nil {
 					n.log.Warnf("failed resending nacked packet: %+v", err)
+				} else {
+					n.mu.Lock()
+					n.resendBytes += size
+					if n.startTime.IsZero() {
+						n.startTime = time.Now()
+					}
+					n.mu.Unlock()
 				}
 				p.Release()
 			}
@@ -168,4 +186,32 @@ func (n *ResponderInterceptor) resendPackets(nack *rtcp.TransportLayerNack) {
 			return true
 		})
 	}
+}
+
+// GetNACKBitRate calculates and returns the current NACK bit rate in bits per second.
+func (n *ResponderInterceptor) GetNACKBitRate() float64 {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if n.startTime.IsZero() {
+		return 0
+	}
+
+	duration := time.Since(n.startTime).Seconds()
+	if duration == 0 {
+		return 0
+	}
+
+	// Convert bytes to bits and calculate the rate
+	bitrate := (float64(n.resendBytes) * 8) / duration
+	n.resendBytes = 0
+	n.startTime = time.Now()
+	return bitrate
+}
+
+func GetNACKBitRate() float64 {
+	if instance == nil {
+		return 0
+	}
+	return instance.GetNACKBitRate()
 }

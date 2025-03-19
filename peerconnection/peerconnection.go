@@ -217,9 +217,8 @@ func (pc *PeerConnectionThread) Spin() {
 					slog.Warn("bitrate controller is nil")
 					return
 				}
-				// nackBitrate := nack.GetBitrate()
-				// slog.Info("nack bitrate", "bitrate", nackBitrate)
-				// TODO: minus nack bitrate here
+				nackBitrate := nack.GetNACKBitRate()
+				bitrate -= int(nackBitrate / 2)
 				// TODO: minus FEC bitrate here
 				// TODO: minus audio bitrate here
 				slog.Info("setting bitrate", "bitrate", bitrate)
