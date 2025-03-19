@@ -85,8 +85,6 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
 	i.Add(nackResponder)
 	i.Add(congestionControllerFactory)
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
@@ -123,7 +121,7 @@ func NewPeerConnectionThread(
 		videoTrack.OnEnded(func(err error) {
 			slog.Error("Track ended", "error", err)
 		})
-		_, err := peerConnection.AddTransceiverFromTrack(
+		t, err := peerConnection.AddTransceiverFromTrack(
 			videoTrack,
 			webrtc.RTPTransceiverInit{
 				Direction: webrtc.RTPTransceiverDirectionSendonly,
@@ -132,7 +130,7 @@ func NewPeerConnectionThread(
 		if err != nil {
 			panic(err)
 		}
-		slog.Info("add video track success")
+		slog.Info("add video track success", "encodings", t.Sender().GetParameters().Encodings)
 	}
 
 	gamepadControl, err := NewGamepadControl()
@@ -218,13 +216,13 @@ func (pc *PeerConnectionThread) Spin() {
 					return
 				}
 				nackBitrate := nack.GetNACKBitRate()
-				if nackBitrate != 0 {
-					slog.Info("nack bitrate", "bitrate", nackBitrate/2)
-				}
+				// if nackBitrate != 0 {
+				// 	slog.Info("nack bitrate", "bitrate", nackBitrate/2)
+				// }
 				bitrate -= int(nackBitrate / 2)
 				// TODO: minus FEC bitrate here
 				// TODO: minus audio bitrate here
-				slog.Info("setting bitrate", "bitrate", bitrate)
+				// slog.Info("setting bitrate", "bitrate", bitrate)
 				bitrateController.SetBitRate(bitrate)
 			})
 		case webrtc.PeerConnectionStateClosed:
@@ -350,5 +348,21 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	}
 	codecselector := mediadevices.NewCodecSelector(codecSelectorOption)
 	codecselector.Populate(m)
+	err := m.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:     webrtc.MimeTypeRTX,
+				ClockRate:    9000,
+				Channels:     0,
+				SDPFmtpLine:  "apt=112",
+				RTCPFeedback: nil,
+			},
+			PayloadType: 113,
+		},
+		webrtc.RTPCodecTypeVideo,
+	)
+	if err != nil {
+		return nil, err
+	}
 	return codecselector, nil
 }

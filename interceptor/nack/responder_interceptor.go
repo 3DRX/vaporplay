@@ -4,6 +4,7 @@
 package nack
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -110,6 +111,19 @@ func (n *ResponderInterceptor) BindRTCPReader(reader interceptor.RTCPReader) int
 func (n *ResponderInterceptor) BindLocalStream(
 	info *interceptor.StreamInfo, writer interceptor.RTPWriter,
 ) interceptor.RTPWriter {
+	slog.Info(
+		"BindLocalStream",
+		"ssrc",
+		info.SSRC,
+		"rtx",
+		info.SSRCRetransmission,
+		"mimeType",
+		info.MimeType,
+		"payloadType",
+		info.PayloadType,
+		"payloadTypeRtx",
+		info.PayloadTypeRetransmission,
+	)
 	if !n.streamsFilter(info) {
 		return writer
 	}
@@ -155,6 +169,7 @@ func (n *ResponderInterceptor) UnbindLocalStream(info *interceptor.StreamInfo) {
 // resendPackets resends packets based on the NACK feedback and tracks the bytes sent.
 func (n *ResponderInterceptor) resendPackets(nack *rtcp.TransportLayerNack) {
 	n.streamsMu.Lock()
+	slog.Info("resendPackets", "sender", nack.SenderSSRC, "media", nack.MediaSSRC)
 	stream, ok := n.streams[nack.MediaSSRC]
 	n.streamsMu.Unlock()
 	if !ok {

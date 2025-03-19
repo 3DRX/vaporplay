@@ -13,6 +13,7 @@ import (
 	"github.com/pion/mediadevices/pkg/codec"
 	"github.com/pion/mediadevices/pkg/io/video"
 	"github.com/pion/mediadevices/pkg/prop"
+	"github.com/pion/webrtc/v4"
 )
 
 type hardwareEncoder struct {
@@ -90,6 +91,11 @@ func NewH264VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (
 // RTPCodec represents the codec metadata
 func (p *H264Params) RTPCodec() *codec.RTPCodec {
 	defaultH264Codec := codec.NewRTPH264Codec(90000)
+	defaultH264Codec.PayloadType = 112
+	defaultH264Codec.RTCPFeedback = []webrtc.RTCPFeedback{
+		{Type: "nack", Parameter: ""},
+		{Type: "nack", Parameter: "pli"},
+	}
 	return defaultH264Codec
 }
 
@@ -129,6 +135,11 @@ func NewH265VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (
 
 func (p *H265Params) RTPCodec() *codec.RTPCodec {
 	defaultH265Codec := codec.NewRTPH265Codec(90000)
+	defaultH265Codec.PayloadType = 112
+	defaultH265Codec.RTCPFeedback = []webrtc.RTCPFeedback{
+		{Type: "nack", Parameter: ""},
+		{Type: "nack", Parameter: "pli"},
+	}
 	return defaultH265Codec
 }
 
@@ -158,6 +169,11 @@ func NewAV1NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (A
 
 func (p *AV1Params) RTPCodec() *codec.RTPCodec {
 	defaultAV1Codec := codec.NewRTPAV1Codec(90000)
+	defaultAV1Codec.PayloadType = 112
+	defaultAV1Codec.RTCPFeedback = []webrtc.RTCPFeedback{
+		{Type: "nack", Parameter: ""},
+		{Type: "nack", Parameter: "pli"},
+	}
 	return defaultAV1Codec
 }
 
