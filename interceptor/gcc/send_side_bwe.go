@@ -332,7 +332,7 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 		panic(err)
 	}
 	w := bufio.NewWriter(f)
-	w.WriteString("frame_size,loss_packets_counts,threshold,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
+	w.WriteString("twcc_id,frame_size,loss_packets_counts,threshold,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
 	defer f.Close()
 	f2, err := os.Create("rfc8888.csv")
 	if err != nil {
@@ -357,7 +357,8 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 				lossPacketsCount := getLossPacketsCounts(frame)
 				_, err := w.WriteString(
 					fmt.Sprintf(
-						"%d,%d,%d,%d,%d,%d,%d\n",
+						"%d,%d,%d,%d,%d,%d,%d,%d\n",
+						index,
 						frameSize,
 						lossPacketsCount,
 						threshold,
