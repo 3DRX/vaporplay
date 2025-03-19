@@ -11,7 +11,7 @@ import (
 
 const (
 	decreaseEMAAlpha = 0.95
-	beta             = 0.85
+	beta             = 0.65
 )
 
 type rateController struct {
@@ -159,7 +159,7 @@ func (c *rateController) increase(now time.Time) int {
 
 		return int(math.Min(float64(c.target+increase), 1.5*float64(c.latestReceivedRate)))
 	}
-	eta := math.Pow(1.08, math.Min(float64(now.Sub(c.lastUpdate).Milliseconds())/1000, 1.0))
+	eta := math.Pow(1.073, math.Min(float64(now.Sub(c.lastUpdate).Milliseconds())/1000, 1.0))
 	c.lastUpdate = now
 
 	rate := int(eta * float64(c.target))
