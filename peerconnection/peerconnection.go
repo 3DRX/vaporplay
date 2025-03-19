@@ -218,6 +218,9 @@ func (pc *PeerConnectionThread) Spin() {
 					return
 				}
 				nackBitrate := nack.GetNACKBitRate()
+				if nackBitrate != 0 {
+					slog.Info("nack bitrate", "bitrate", nackBitrate/2)
+				}
 				bitrate -= int(nackBitrate / 2)
 				// TODO: minus FEC bitrate here
 				// TODO: minus audio bitrate here
