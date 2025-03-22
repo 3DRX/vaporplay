@@ -38,8 +38,10 @@ type GameConfig struct {
 }
 
 type Config struct {
-	Addr  string       `json:"addr"` // http service address
-	Games []GameConfig `json:"games"`
+	Addr                string       `json:"addr"` // http service address
+	EphemeralUDPPortMin uint16       `json:"ephemeral_udp_port_min"`
+	EphemeralUDPPortMax uint16       `json:"ephemeral_udp_port_max"`
+	Games               []GameConfig `json:"games"`
 }
 
 func isValidAddr(addr *string) bool {
@@ -148,6 +150,13 @@ func LoadCfg(cfgPath string) *Config {
 	err = checkCfg(c)
 	if err != nil {
 		panic(err)
+	}
+
+	if c.EphemeralUDPPortMin == 0 {
+		c.EphemeralUDPPortMin = 1
+	}
+	if c.EphemeralUDPPortMax == 0 {
+		c.EphemeralUDPPortMax = 65535
 	}
 
 	// Print config

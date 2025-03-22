@@ -43,7 +43,6 @@ func openWindow(windowname string) (*windowmatch, error) {
 	defer C.free(unsafe.Pointer(cstr))
 	wm := C.query_window_by_name(cstr)
 	if wm == nil {
-		slog.Warn("failed to open display or find window")
 		return nil, errors.New("failed to open display")
 	}
 	return (*windowmatch)(wm), nil
@@ -171,6 +170,7 @@ func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 		}
 		dst.Pix = dst.Pix[:l]
 	}
+	slog.Info("ToRGBA", "pixFmt", s.pixFmt)
 	switch s.pixFmt {
 	case pixFmtRGB24:
 		// C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))

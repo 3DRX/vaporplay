@@ -55,6 +55,7 @@ func NewPeerConnectionThread(
 	recvSDPChan <-chan webrtc.SessionDescription,
 	sendCandidateChan chan<- webrtc.ICECandidateInit,
 	recvCandidateChan <-chan webrtc.ICECandidateInit,
+	cfg *config.Config,
 	sessionConfig *config.SessionConfig,
 	cpuProfile string,
 ) *PeerConnectionThread {
@@ -92,7 +93,13 @@ func NewPeerConnectionThread(
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
 		panic(err)
 	}
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
+	settingEngine := webrtc.SettingEngine{}
+	settingEngine.SetEphemeralUDPPortRange(cfg.EphemeralUDPPortMin, cfg.EphemeralUDPPortMax)
+	api := webrtc.NewAPI(
+		webrtc.WithMediaEngine(m),
+		webrtc.WithInterceptorRegistry(i),
+		webrtc.WithSettingEngine(settingEngine),
+	)
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
