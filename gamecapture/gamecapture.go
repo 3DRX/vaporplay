@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log/slog"
 	"unsafe"
 )
 
@@ -170,7 +169,6 @@ func (s *shmImage) ToRGBA(dst *image.RGBA) *image.RGBA {
 		}
 		dst.Pix = dst.Pix[:l]
 	}
-	slog.Info("ToRGBA", "pixFmt", s.pixFmt)
 	switch s.pixFmt {
 	case pixFmtRGB24:
 		// C.memcpy(unsafe.Pointer(&dst.Pix[0]), unsafe.Pointer(s.img.data), C.size_t(len(dst.Pix)))
