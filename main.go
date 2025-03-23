@@ -39,6 +39,7 @@ func main() {
 		recvSDPChan,
 		sendCandidateChan,
 		recvCandidateChan,
+		cfg,
 		sessionConfig,
 		*cpuProfile,
 	)
