@@ -109,7 +109,7 @@ func (f *FeedbackAdapter) OnSent(ts time.Time, header *rtp.Header, size int, att
 
 func (f *FeedbackAdapter) unpackRunLengthChunk(
 	start uint16, refTime time.Time, chunk *rtcp.RunLengthChunk, deltas []*rtcp.RecvDelta,
-) (consumedDeltas int, nextRef time.Time, acks []Acknowledgment, err error) {
+) (int, time.Time, []Acknowledgment, error) {
 	result := make([]Acknowledgment, chunk.RunLength)
 	deltaIndex := 0
 
