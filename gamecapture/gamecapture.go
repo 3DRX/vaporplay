@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log/slog"
 	"unsafe"
 )
 
@@ -43,7 +42,6 @@ func openWindow(windowname string) (*windowmatch, error) {
 	defer C.free(unsafe.Pointer(cstr))
 	wm := C.query_window_by_name(cstr)
 	if wm == nil {
-		slog.Warn("failed to open display or find window")
 		return nil, errors.New("failed to open display")
 	}
 	return (*windowmatch)(wm), nil

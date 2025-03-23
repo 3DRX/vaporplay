@@ -44,6 +44,12 @@ type Stats struct {
 	DelayStats
 }
 
+type CCStats struct {
+	rtt  time.Duration
+	acks []cc.Acknowledgment
+	twcc *rtcp.TransportLayerCC
+}
+
 // SendSideBWE implements a combination of loss and delay based GCC.
 type SendSideBWE struct {
 	pacer           Pacer
@@ -62,10 +68,9 @@ type SendSideBWE struct {
 	close     chan struct{}
 	closeLock sync.RWMutex
 
-	statsChan       chan []cc.Acknowledgment
+	statsChan       chan CCStats
 	rfc8888Chan     chan []cc.Acknowledgment
 	latestStatsChan chan Stats
-	rttChan         chan time.Duration
 }
 
 // Option configures a bandwidth estimator.
@@ -109,10 +114,9 @@ func SendSideBWEPacer(p Pacer) Option {
 
 // NewSendSideBWE creates a new sender side bandwidth estimator.
 func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
-	statsChan := make(chan []cc.Acknowledgment, 100)
+	statsChan := make(chan CCStats, 100)
 	rfc8888Chan := make(chan []cc.Acknowledgment, 100)
 	latestStatsChan := make(chan Stats, 100)
-	rttChan := make(chan time.Duration, 100)
 	send := &SendSideBWE{
 		pacer:                 nil,
 		lossController:        nil,
@@ -128,7 +132,6 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 		statsChan:             statsChan,
 		rfc8888Chan:           rfc8888Chan,
 		latestStatsChan:       latestStatsChan,
-		rttChan:               rttChan,
 	}
 	for _, opt := range opts {
 		if err := opt(send); err != nil {
@@ -148,7 +151,7 @@ func NewSendSideBWE(opts ...Option) (*SendSideBWE, error) {
 
 	send.delayController.onUpdate(send.onDelayUpdate)
 
-	go StatsThread(statsChan, rfc8888Chan, latestStatsChan, rttChan)
+	go StatsThread(statsChan, rfc8888Chan, latestStatsChan)
 
 	return send, nil
 }
@@ -228,8 +231,11 @@ func (e *SendSideBWE) WriteRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) er
 				e.delayController.updateRTT(feedbackMinRTT)
 			}
 
-			e.statsChan <- acks
-			e.rttChan <- feedbackMinRTT
+			e.statsChan <- CCStats{
+				acks: acks,
+				rtt:  feedbackMinRTT,
+				twcc: fb,
+			}
 
 			e.lossController.updateLossEstimate(acks)
 			e.delayController.updateDelayEstimate(acks)
@@ -326,13 +332,13 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 
 ////// stats only
 
-func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Acknowledgment, gccStatsChan chan Stats, rttChan chan time.Duration) {
+func StatsThread(statsChan chan CCStats, rfc8888Chan chan []cc.Acknowledgment, gccStatsChan chan Stats) {
 	f, err := os.Create("gcc_stats.csv")
 	if err != nil {
 		panic(err)
 	}
 	w := bufio.NewWriter(f)
-	w.WriteString("frame_size,loss_packets_counts,threshold,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
+	w.WriteString("twcc_id,frame_size,loss_packets_counts,threshold,delay_grad_before_kalman,delay_grad_after_kalman,gcc_bw,rtt\n")
 	defer f.Close()
 	f2, err := os.Create("rfc8888.csv")
 	if err != nil {
@@ -346,18 +352,20 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 	for {
 		select {
 		case statsItem := <-statsChan:
-			rtt := <-rttChan
+			acks := statsItem.acks
+			rtt := statsItem.rtt
 			gccStats := <-gccStatsChan
 			delayGradBeforeKalman := gccStats.DelayStats.Measurement.Microseconds()
 			delayGradAfterKalman := gccStats.DelayStats.Estimate.Microseconds()
 			threshold := gccStats.DelayStats.Threshold.Microseconds()
 			gccBw := minInt(gccStats.DelayStats.TargetBitrate, gccStats.LossStats.TargetBitrate)
-			for _, frame := range groupByFrame(statsItem) {
+			for _, frame := range groupByFrame(acks) {
 				frameSize := len(frame)
 				lossPacketsCount := getLossPacketsCounts(frame)
 				_, err := w.WriteString(
 					fmt.Sprintf(
-						"%d,%d,%d,%d,%d,%d,%d\n",
+						"%d,%d,%d,%d,%d,%d,%d,%d\n",
+						index,
 						frameSize,
 						lossPacketsCount,
 						threshold,
@@ -403,6 +411,7 @@ func StatsThread(statsChan chan []cc.Acknowledgment, rfc8888Chan chan []cc.Ackno
 func groupByFrame(acks []cc.Acknowledgment) [][]cc.Acknowledgment {
 	groupedMap := make(map[uint16][]cc.Acknowledgment)
 	for _, ack := range acks {
+		ack := ack
 		groupedMap[ack.Stats.FrameID] = append(groupedMap[ack.Stats.FrameID], ack)
 	}
 	grouped := make([][]cc.Acknowledgment, 0, len(groupedMap))

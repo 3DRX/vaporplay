@@ -1,4 +1,5 @@
 #include "window_match.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -74,15 +75,17 @@ void find_window_by_name_recursive(Display *display, Window window,
 WindowMatch *query_window_by_name(const char *window_name) {
   WindowMatch *result = malloc(sizeof(WindowMatch));
   if (!result) {
+    printf("windowmatch malloc failed\n");
     return NULL;
   }
 
   // Initialize result
-  result->display = XOpenDisplay(NULL);
+  result->display = XOpenDisplay(getenv("DISPLAY"));
   result->window = None;
 
   if (!result->display) {
     free(result);
+    printf("XOpenDisplay failed\n");
     return NULL;
   }
 
