@@ -223,13 +223,13 @@ func (pc *PeerConnectionThread) Spin() {
 					return
 				}
 				nackBitrate := nack.GetNACKBitRate()
-				// if nackBitrate != 0 {
-				// 	slog.Info("nack bitrate", "bitrate", nackBitrate/2)
-				// }
+				if nackBitrate != 0 {
+					slog.Info("nack bitrate", "bitrate", nackBitrate/2)
+				}
 				bitrate -= int(nackBitrate / 2)
 				// TODO: minus FEC bitrate here
 				// TODO: minus audio bitrate here
-				// slog.Info("setting bitrate", "bitrate", bitrate)
+				slog.Info("setting bitrate", "bitrate", bitrate)
 				bitrateController.SetBitRate(bitrate)
 			})
 		case webrtc.PeerConnectionStateClosed:
@@ -266,6 +266,7 @@ func (pc *PeerConnectionThread) Spin() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
+	slog.Info("Before calling SetRemoteDescription", "sender parameters", pc.peerConnection.GetTransceivers()[0].Sender().GetParameters())
 	pc.peerConnection.SetRemoteDescription(remoteSDP)
 	select {
 	case <-endSpinPromise:

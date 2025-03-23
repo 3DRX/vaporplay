@@ -112,7 +112,7 @@ func (n *ResponderInterceptor) BindLocalStream(
 	info *interceptor.StreamInfo, writer interceptor.RTPWriter,
 ) interceptor.RTPWriter {
 	slog.Info(
-		"BindLocalStream",
+		"ResponderInterceptor BindLocalStream",
 		"ssrc",
 		info.SSRC,
 		"rtx",
