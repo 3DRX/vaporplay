@@ -138,6 +138,9 @@ func NewPeerConnectionThread(
 			panic(err)
 		}
 		slog.Info("add video track success", "encodings", t.Sender().GetParameters().Encodings)
+		encoding := t.Sender().GetParameters().Encodings[0]
+		nack.SetRtxSSRC(uint32(encoding.RTPCodingParameters.RTX.SSRC))
+		nack.SetRtxPayloadType(113)
 	}
 
 	gamepadControl, err := NewGamepadControl()
