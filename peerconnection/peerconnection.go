@@ -375,5 +375,21 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	if err != nil {
 		return nil, err
 	}
+	err = m.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:     webrtc.MimeTypeFlexFEC,
+				ClockRate:    9000,
+				Channels:     0,
+				SDPFmtpLine:  "repair-window=200000", // 200ms
+				RTCPFeedback: nil,
+			},
+			PayloadType: 118,
+		},
+		webrtc.RTPCodecTypeVideo,
+	)
+	if err != nil {
+		return nil, err
+	}
 	return codecselector, nil
 }
