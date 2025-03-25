@@ -13,10 +13,13 @@ import (
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/3DRX/piongs/interceptor/cc"
+	"github.com/3DRX/piongs/interceptor/flexfec"
 	"github.com/3DRX/piongs/interceptor/gcc"
 	"github.com/3DRX/piongs/interceptor/nack"
+	"github.com/3DRX/piongs/interceptor/twcc"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/interceptor"
+	"github.com/pion/sdp/v3"
 
 	"github.com/pion/mediadevices"
 	"github.com/pion/mediadevices/pkg/codec"
@@ -86,11 +89,29 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	i.Add(nackResponder)
-	i.Add(congestionControllerFactory)
-	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
+	fecInterceptor, err := flexfec.NewFecInterceptor()
+	if err != nil {
 		panic(err)
 	}
+	if err := m.RegisterHeaderExtension(
+		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
+	); err != nil {
+		panic(err)
+	}
+	// TODO: add audio
+	// if err := m.RegisterHeaderExtension(
+	// 	webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio,
+	// ); err != nil {
+	// 	panic(err)
+	// }
+	twccInterceptor, err := twcc.NewHeaderExtensionInterceptor()
+	if err != nil {
+		panic(err)
+	}
+	i.Add(congestionControllerFactory)
+	i.Add(twccInterceptor)
+	i.Add(fecInterceptor)
+	i.Add(nackResponder)
 	settingEngine := webrtc.SettingEngine{}
 	settingEngine.SetEphemeralUDPPortRange(cfg.EphemeralUDPPortMin, cfg.EphemeralUDPPortMax)
 	api := webrtc.NewAPI(
@@ -141,6 +162,8 @@ func NewPeerConnectionThread(
 		encoding := t.Sender().GetParameters().Encodings[0]
 		nack.SetRtxSSRC(uint32(encoding.RTPCodingParameters.RTX.SSRC))
 		nack.SetRtxPayloadType(113)
+		flexfec.SetFecSSRC(uint32(encoding.RTPCodingParameters.FEC.SSRC))
+		flexfec.SetFecPayloadType(118)
 	}
 
 	gamepadControl, err := NewGamepadControl()
@@ -226,14 +249,20 @@ func (pc *PeerConnectionThread) Spin() {
 					return
 				}
 				nackBitrate := nack.GetNACKBitRate()
-				if nackBitrate != 0 {
-					slog.Info("nack bitrate", "bitrate", nackBitrate/2)
-				}
-				bitrate -= int(nackBitrate / 2)
-				// TODO: minus FEC bitrate here
+				fecBitrate := flexfec.GetFECBitrate()
+				videoBitrate := bitrate - int(nackBitrate/2)
+				videoBitrate -= int(fecBitrate)
 				// TODO: minus audio bitrate here
-				slog.Info("setting bitrate", "bitrate", bitrate)
-				bitrateController.SetBitRate(bitrate)
+				slog.Info(
+					"setting bitrate",
+					"bitrate",
+					bitrate,
+					"nack",
+					fmt.Sprintf("%.2f%%", (nackBitrate/float64(bitrate))*100),
+					"fec",
+					fmt.Sprintf("%.2f%%", (fecBitrate/float64(bitrate))*100),
+				)
+				bitrateController.SetBitRate(videoBitrate)
 			})
 		case webrtc.PeerConnectionStateClosed:
 			slog.Info("Peer connection closed")

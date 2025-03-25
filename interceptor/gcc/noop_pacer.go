@@ -5,7 +5,6 @@ package gcc
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/pion/interceptor"
@@ -20,6 +19,7 @@ var ErrUnknownStream = errors.New("unknown ssrc")
 type NoOpPacer struct {
 	lock         sync.Mutex
 	ssrcToWriter map[uint32]interceptor.RTPWriter
+	mainSSRC     uint32
 }
 
 // NewNoOpPacer initializes a new NoOpPacer.
@@ -39,6 +39,7 @@ func (p *NoOpPacer) SetTargetBitrate(int) {
 func (p *NoOpPacer) AddStream(ssrc uint32, writer interceptor.RTPWriter) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	p.mainSSRC = ssrc // TODO: for now, AddStream is called only once, with ssrc as the video ssrc
 	p.ssrcToWriter[ssrc] = writer
 }
 
@@ -47,11 +48,17 @@ func (p *NoOpPacer) Write(header *rtp.Header, payload []byte, attributes interce
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if w, ok := p.ssrcToWriter[header.SSRC]; ok {
-		return w.Write(header, payload, attributes)
-	}
+	// TODO: for now, we just send all SSRC to the same writer
+	writer := p.ssrcToWriter[p.mainSSRC]
+	// slog.Info("NoOpPacer: Writing packet", "payloadType", header.PayloadType)
+	return writer.Write(header, payload, attributes)
 
-	return 0, fmt.Errorf("%w: %v", ErrUnknownStream, header.SSRC)
+	// if w, ok := p.ssrcToWriter[header.SSRC]; ok {
+	// 	slog.Info("NoOpPacer: Writing packet", "payloadType", header.PayloadType)
+	// 	return w.Write(header, payload, attributes)
+	// }
+
+	// return 0, fmt.Errorf("%w: %v", ErrUnknownStream, header.SSRC)
 }
 
 // Close closes p.
