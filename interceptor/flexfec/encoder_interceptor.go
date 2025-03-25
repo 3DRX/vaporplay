@@ -92,31 +92,30 @@ func (r *FecInterceptor) BindLocalStream(
 			// Send the media RTP packet
 			result, err := writer.Write(header, payload, attributes)
 
-			// TODO: turn off FEC for now
-			// // Send the FEC packets
-			// var fecPackets []rtp.Packet
-			// // for frame smaller than 5 packets, encode FEC with next frame
-			// if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
-			// 	fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, 2)
+			// Send the FEC packets
+			var fecPackets []rtp.Packet
+			// for frame smaller than 5 packets, encode FEC with next frame
+			if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
+				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, 1)
 
-			// 	for i := range fecPackets {
-			// 		size := uint64(fecPackets[i].Header.MarshalSize() + len(fecPackets[i].Payload))
-			// 		fecResult, fecErr := writer.Write(&(fecPackets[i].Header), fecPackets[i].Payload, attributes)
+				for i := range fecPackets {
+					size := uint64(fecPackets[i].Header.MarshalSize() + len(fecPackets[i].Payload))
+					fecResult, fecErr := writer.Write(&(fecPackets[i].Header), fecPackets[i].Payload, attributes)
 
-			// 		if fecErr != nil && fecResult == 0 {
-			// 			break
-			// 		} else {
-			// 			r.mu.Lock()
-			// 			r.fecBytes += size
-			// 			if r.startTime.IsZero() {
-			// 				r.startTime = time.Now()
-			// 			}
-			// 			r.mu.Unlock()
-			// 		}
-			// 	}
-			// 	// Reset the packet buffer now that we've sent the corresponding FEC packets.
-			// 	r.packetBuffer = nil
-			// }
+					if fecErr != nil && fecResult == 0 {
+						break
+					} else {
+						r.mu.Lock()
+						r.fecBytes += size
+						if r.startTime.IsZero() {
+							r.startTime = time.Now()
+						}
+						r.mu.Unlock()
+					}
+				}
+				// Reset the packet buffer now that we've sent the corresponding FEC packets.
+				r.packetBuffer = nil
+			}
 
 			return result, err
 		},

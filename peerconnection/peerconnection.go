@@ -250,7 +250,7 @@ func (pc *PeerConnectionThread) Spin() {
 				}
 				nackBitrate := nack.GetNACKBitRate()
 				fecBitrate := flexfec.GetFECBitrate()
-				videoBitrate := bitrate - int(nackBitrate/2)
+				videoBitrate := bitrate - int(nackBitrate)
 				videoBitrate -= int(fecBitrate)
 				// TODO: minus audio bitrate here
 				slog.Info(

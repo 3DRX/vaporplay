@@ -68,6 +68,8 @@ type SendSideBWE struct {
 	close     chan struct{}
 	closeLock sync.RWMutex
 
+	updateCount int
+
 	statsChan       chan CCStats
 	rfc8888Chan     chan []cc.Acknowledgment
 	latestStatsChan chan Stats
@@ -317,6 +319,11 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 		bitrateChanged = true
 		e.latestBitrate = bitrate
 		e.pacer.SetTargetBitrate(e.latestBitrate)
+	}
+	e.updateCount++
+	if !bitrateChanged && e.updateCount >= 5 {
+		e.updateCount = 0
+		bitrateChanged = true
 	}
 
 	if bitrateChanged && e.onTargetBitrateChange != nil {
