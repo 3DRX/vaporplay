@@ -86,8 +86,6 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
 	i.Add(nackResponder)
 	i.Add(congestionControllerFactory)
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, i); err != nil {
@@ -130,7 +128,7 @@ func NewPeerConnectionThread(
 		videoTrack.OnEnded(func(err error) {
 			slog.Error("Track ended", "error", err)
 		})
-		_, err := peerConnection.AddTransceiverFromTrack(
+		t, err := peerConnection.AddTransceiverFromTrack(
 			videoTrack,
 			webrtc.RTPTransceiverInit{
 				Direction: webrtc.RTPTransceiverDirectionSendonly,
@@ -139,7 +137,10 @@ func NewPeerConnectionThread(
 		if err != nil {
 			panic(err)
 		}
-		slog.Info("add video track success")
+		slog.Info("add video track success", "encodings", t.Sender().GetParameters().Encodings)
+		encoding := t.Sender().GetParameters().Encodings[0]
+		nack.SetRtxSSRC(uint32(encoding.RTPCodingParameters.RTX.SSRC))
+		nack.SetRtxPayloadType(113)
 	}
 
 	gamepadControl, err := NewGamepadControl()
@@ -268,6 +269,7 @@ func (pc *PeerConnectionThread) Spin() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
+	slog.Info("Before calling SetRemoteDescription", "sender parameters", pc.peerConnection.GetTransceivers()[0].Sender().GetParameters())
 	pc.peerConnection.SetRemoteDescription(remoteSDP)
 	select {
 	case <-endSpinPromise:
@@ -357,5 +359,21 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	}
 	codecselector := mediadevices.NewCodecSelector(codecSelectorOption)
 	codecselector.Populate(m)
+	err := m.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:     webrtc.MimeTypeRTX,
+				ClockRate:    9000,
+				Channels:     0,
+				SDPFmtpLine:  "apt=112",
+				RTCPFeedback: nil,
+			},
+			PayloadType: 113,
+		},
+		webrtc.RTPCodecTypeVideo,
+	)
+	if err != nil {
+		return nil, err
+	}
 	return codecselector, nil
 }

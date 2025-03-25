@@ -4,6 +4,7 @@
 package nack
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -55,8 +56,10 @@ type ResponderInterceptor struct {
 	log           logging.LeveledLogger
 	packetFactory rtpbuffer.PacketFactory
 
-	streams   map[uint32]*localStream
-	streamsMu sync.Mutex
+	streams        map[uint32]*localStream
+	streamsMu      sync.Mutex
+	rtxPayloadType uint8
+	rtxSSRC        uint32
 
 	resendBytes uint64
 	startTime   time.Time
@@ -110,6 +113,25 @@ func (n *ResponderInterceptor) BindRTCPReader(reader interceptor.RTCPReader) int
 func (n *ResponderInterceptor) BindLocalStream(
 	info *interceptor.StreamInfo, writer interceptor.RTPWriter,
 ) interceptor.RTPWriter {
+	if n.rtxPayloadType != 0 {
+		info.PayloadTypeRetransmission = n.rtxPayloadType
+	}
+	if n.rtxSSRC != 0 {
+		info.SSRCRetransmission = n.rtxSSRC
+	}
+	slog.Info(
+		"ResponderInterceptor BindLocalStream",
+		"ssrc",
+		info.SSRC,
+		"rtx",
+		info.SSRCRetransmission,
+		"mimeType",
+		info.MimeType,
+		"payloadType",
+		info.PayloadType,
+		"payloadTypeRtx",
+		info.PayloadTypeRetransmission,
+	)
 	if !n.streamsFilter(info) {
 		return writer
 	}
@@ -207,6 +229,36 @@ func (n *ResponderInterceptor) GetNACKBitRate() float64 {
 	n.resendBytes = 0
 	n.startTime = time.Now()
 	return bitrate
+}
+
+func (n *ResponderInterceptor) SetRtxPayloadType(payloadType uint8) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.rtxPayloadType = payloadType
+}
+
+func (n *ResponderInterceptor) SetRtxSSRC(ssrc uint32) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.rtxSSRC = ssrc
+}
+
+func SetRtxPayloadType(payloadType uint8) {
+	if instance == nil {
+		slog.Warn("SetRtxPayloadType instance is nil")
+		return
+	}
+	instance.SetRtxPayloadType(payloadType)
+}
+
+func SetRtxSSRC(ssrc uint32) {
+	if instance == nil {
+		slog.Warn("SetRtxSSRC instance is nil")
+		return
+	}
+	instance.SetRtxSSRC(ssrc)
 }
 
 func GetNACKBitRate() float64 {
