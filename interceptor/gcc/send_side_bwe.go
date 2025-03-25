@@ -311,13 +311,15 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 	defer e.lock.Unlock()
 
 	lossStats := e.lossController.getEstimate(delayStats.TargetBitrate)
+	bitrateChanged := false
 	bitrate := minInt(delayStats.TargetBitrate, lossStats.TargetBitrate)
 	if bitrate != e.latestBitrate {
+		bitrateChanged = true
 		e.latestBitrate = bitrate
 		e.pacer.SetTargetBitrate(e.latestBitrate)
 	}
 
-	if e.onTargetBitrateChange != nil {
+	if bitrateChanged && e.onTargetBitrateChange != nil {
 		go e.onTargetBitrateChange(bitrate)
 	}
 
