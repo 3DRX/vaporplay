@@ -10,6 +10,7 @@ require (
 	github.com/pion/mediadevices v0.7.2-0.20250310142525-5cad3f1b41d0
 	github.com/pion/rtcp v1.2.15
 	github.com/pion/rtp v1.8.13
+	github.com/pion/sdp/v3 v3.0.11
 	github.com/pion/webrtc/v4 v4.0.14
 )
 
@@ -22,7 +23,6 @@ require (
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.37 // indirect
-	github.com/pion/sdp/v3 v3.0.11 // indirect
 	github.com/pion/srtp/v3 v3.0.4 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
