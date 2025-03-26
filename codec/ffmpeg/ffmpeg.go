@@ -35,6 +35,20 @@ type hardwareEncoder struct {
 	closed bool
 }
 
+type softwareEncoder struct {
+	codec          *astiav.Codec
+	codecCtx       *astiav.CodecContext
+	frame          *astiav.Frame
+	packet         *astiav.Packet
+	width          int
+	height         int
+	r              video.Reader
+	nextIsKeyFrame bool
+
+	mu     sync.Mutex
+	closed bool
+}
+
 type VP8Params struct {
 	Params
 }
@@ -101,6 +115,38 @@ func (p *H264Params) RTPCodec() *codec.RTPCodec {
 
 func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
 	readCloser, err := newHardwareEncoder(r, property, p.Params)
+	if err != nil {
+		slog.Error("failed to create new encoder", "error", err)
+		return nil, err
+	}
+	slog.Info("sucsessfully created new encoder")
+	return readCloser, nil
+}
+
+type H264SoftwareParams struct {
+	Params
+}
+
+func NewH264X264Params() (H264SoftwareParams, error) {
+	return H264SoftwareParams{
+		Params: Params{
+			codecName: "libx264",
+		},
+	}, nil
+}
+
+func (p *H264SoftwareParams) RTPCodec() *codec.RTPCodec {
+	defaultH264Codec := codec.NewRTPH264Codec(90000)
+	defaultH264Codec.PayloadType = 112
+	defaultH264Codec.RTCPFeedback = []webrtc.RTCPFeedback{
+		{Type: "nack", Parameter: ""},
+		{Type: "nack", Parameter: "pli"},
+	}
+	return defaultH264Codec
+}
+
+func (p *H264SoftwareParams) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+	readCloser, err := newSoftwareEncoder(r, property, p.Params)
 	if err != nil {
 		slog.Error("failed to create new encoder", "error", err)
 		return nil, err
@@ -425,11 +471,157 @@ func (e *hardwareEncoder) Close() error {
 	if e.frame != nil {
 		e.frame.Free()
 	}
+	if e.hwFrame != nil {
+		e.hwFrame.Free()
+	}
 	if e.codecCtx != nil {
 		e.codecCtx.Free()
 	}
 	if e.statsItemChan != nil {
 		close(e.statsItemChan)
+	}
+	return nil
+}
+
+func newSoftwareEncoder(r video.Reader, p prop.Media, params Params) (*softwareEncoder, error) {
+	if p.FrameRate == 0 {
+		slog.Warn(fmt.Sprintf("frame rate is 0, setting to %f", params.FrameRate))
+		p.FrameRate = params.FrameRate
+	}
+	slog.Info("creating new encoder", "params", params, "props", p)
+	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
+
+	codec := astiav.FindEncoderByName(params.codecName)
+	if codec == nil {
+		return nil, fmt.Errorf("codec not found: %s", params.codecName)
+	}
+
+	codecCtx := astiav.AllocCodecContext(codec)
+	if codecCtx == nil {
+		return nil, fmt.Errorf("failed to allocate codec context")
+	}
+
+	// Configure codec context
+	codecCtx.SetWidth(p.Width)
+	codecCtx.SetHeight(p.Height)
+	codecCtx.SetTimeBase(astiav.NewRational(1, int(p.FrameRate)))
+	codecCtx.SetFramerate(codecCtx.TimeBase().Invert())
+	codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatYuv420P))
+	codecCtx.SetBitRate(int64(params.BitRate))
+	codecCtx.SetGopSize(params.KeyFrameInterval)
+	codecCtx.SetMaxBFrames(0)
+	codecOptions := codecCtx.PrivateData().Options()
+	codecOptions.Set("preset", "ultrafast", 0)
+	codecOptions.Set("tune", "zerolatency", 0)
+	codecCtx.SetFlags(astiav.CodecContextFlags(astiav.CodecContextFlagLowDelay))
+
+	// Open codec context
+	if err := codecCtx.Open(codec, nil); err != nil {
+		codecCtx.Free()
+		return nil, fmt.Errorf("failed to open codec context: %w", err)
+	}
+
+	softwareFrame := astiav.AllocFrame()
+	if softwareFrame == nil {
+		codecCtx.Free()
+		return nil, fmt.Errorf("failed to allocate frame")
+	}
+
+	softwareFrame.SetWidth(p.Width)
+	softwareFrame.SetHeight(p.Height)
+	softwareFrame.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatYuv420P))
+
+	err := softwareFrame.AllocBuffer(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate sorfware buffer: %w", err)
+	}
+
+	packet := astiav.AllocPacket()
+	if packet == nil {
+		softwareFrame.Free()
+		codecCtx.Free()
+		return nil, fmt.Errorf("failed to allocate packet")
+	}
+
+	return &softwareEncoder{
+		codec:          codec,
+		codecCtx:       codecCtx,
+		frame:          softwareFrame,
+		packet:         packet,
+		width:          p.Width,
+		height:         p.Height,
+		r:              video.ToI420(r),
+		nextIsKeyFrame: false,
+	}, nil
+}
+
+func (e *softwareEncoder) Read() ([]byte, func(), error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		return nil, func() {}, io.EOF
+	}
+	img, release, err := e.r.Read()
+	if err != nil {
+		return nil, func() {}, err
+	}
+	defer release()
+	if e.nextIsKeyFrame {
+		e.frame.SetPictureType(astiav.PictureType(astiav.PictureTypeI))
+		e.nextIsKeyFrame = false
+	} else {
+		e.frame.SetPictureType(astiav.PictureType(astiav.PictureTypeNone))
+	}
+	err = e.frame.Data().FromImage(img)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to copy image data: %w", err)
+	}
+	if err := e.codecCtx.SendFrame(e.frame); err != nil {
+		return nil, func() {}, fmt.Errorf("failed to send frame: %w", err)
+	}
+	for {
+		if err = e.codecCtx.ReceivePacket(e.packet); err != nil {
+			if errors.Is(err, astiav.ErrEof) || errors.Is(err, astiav.ErrEagain) {
+				continue
+			}
+			return nil, func() {}, fmt.Errorf("failed to receive packet: %w", err)
+		}
+		break
+	}
+	data := make([]byte, e.packet.Size())
+	copy(data, e.packet.Data())
+	e.packet.Unref()
+	return data, func() {}, nil
+}
+
+func (e *softwareEncoder) Controller() codec.EncoderController {
+	return e
+}
+
+func (e *softwareEncoder) ForceKeyFrame() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	slog.Info("forcing key frame")
+	e.nextIsKeyFrame = true
+	return nil
+}
+
+func (e *softwareEncoder) SetBitRate(bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.codecCtx.SetBitRate(int64(bitrate))
+	return nil
+}
+
+func (e *softwareEncoder) Close() error {
+	if e.packet != nil {
+		e.packet.Free()
+	}
+	if e.frame != nil {
+		e.frame.Free()
+	}
+	if e.codecCtx != nil {
+		e.codecCtx.Free()
 	}
 	return nil
 }

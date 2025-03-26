@@ -381,6 +381,15 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		params.FrameRate = config.FrameRate
 		params.KeyFrameInterval = -1
 		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
+	case "libx264":
+		params, err := ffmpeg.NewH264X264Params()
+		if err != nil {
+			return nil, err
+		}
+		params.BitRate = config.InitialBitrate
+		params.FrameRate = config.FrameRate
+		params.KeyFrameInterval = 60
+		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
 	default:
 		return nil, fmt.Errorf("unsupported codec %s", config.Codec)
 		// TODO: vaapi

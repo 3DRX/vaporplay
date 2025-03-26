@@ -109,16 +109,17 @@ export default function ConnectionForm(props: {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-8 w-28">
+                      <SelectTrigger className="h-8 w-36">
                         <SelectValue placeholder="select a codec"></SelectValue>
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="w-36">
                       <SelectGroup>
                         <SelectLabel>Codec</SelectLabel>
-                        <SelectItem value="h264_nvenc">H.264</SelectItem>
-                        <SelectItem value="hevc_nvenc">H.265</SelectItem>
-                        <SelectItem value="av1_nvenc">AV1</SelectItem>
+                        <SelectItem value="h264_nvenc">H.264 NVENC</SelectItem>
+                        <SelectItem value="hevc_nvenc">H.265 NVENC</SelectItem>
+                        <SelectItem value="av1_nvenc">AV1 NVENC</SelectItem>
+                        <SelectItem value="libx264">x264</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -139,11 +140,11 @@ export default function ConnectionForm(props: {
                     defaultValue={`${field.value}FPS`}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-8 w-28">
-                        <SelectValue placeholder="select a codec"></SelectValue>
+                      <SelectTrigger className="h-8 w-24">
+                        <SelectValue placeholder="select a frame rate"></SelectValue>
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="w-24">
                       <SelectGroup>
                         <SelectLabel>Frame Rate</SelectLabel>
                         <SelectItem value="30FPS">30FPS</SelectItem>
