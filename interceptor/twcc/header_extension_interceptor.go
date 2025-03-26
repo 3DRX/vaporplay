@@ -55,7 +55,6 @@ func (h *HeaderExtensionInterceptor) BindLocalStream(
 	return interceptor.RTPWriterFunc(
 		func(header *rtp.Header, payload []byte, attributes interceptor.Attributes) (int, error) {
 			sequenceNumber := atomic.AddUint32(&h.nextSequenceNr, 1) - 1
-			//nolint:gosec // G115
 			tcc, err := (&rtp.TransportCCExtension{TransportSequence: uint16(sequenceNumber)}).Marshal()
 			if err != nil {
 				return 0, err
@@ -67,8 +66,6 @@ func (h *HeaderExtensionInterceptor) BindLocalStream(
 			if err != nil {
 				return 0, err
 			}
-
-			// slog.Info("HeaderExtensionInterceptor: Writing packet", "payloadType", header.PayloadType)
 
 			return writer.Write(header, payload, attributes)
 		},

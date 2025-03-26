@@ -19,7 +19,7 @@ var ErrUnknownStream = errors.New("unknown ssrc")
 type NoOpPacer struct {
 	lock         sync.Mutex
 	ssrcToWriter map[uint32]interceptor.RTPWriter
-	mainSSRC     uint32
+	mainWriter   interceptor.RTPWriter
 }
 
 // NewNoOpPacer initializes a new NoOpPacer.
@@ -39,8 +39,8 @@ func (p *NoOpPacer) SetTargetBitrate(int) {
 func (p *NoOpPacer) AddStream(ssrc uint32, writer interceptor.RTPWriter) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	p.mainSSRC = ssrc // TODO: for now, AddStream is called only once, with ssrc as the video ssrc
 	p.ssrcToWriter[ssrc] = writer
+	p.mainWriter = writer
 }
 
 // Write sends a packet with header and payload to a previously added stream.
@@ -49,9 +49,18 @@ func (p *NoOpPacer) Write(header *rtp.Header, payload []byte, attributes interce
 	defer p.lock.Unlock()
 
 	// TODO: for now, we just send all SSRC to the same writer
-	writer := p.ssrcToWriter[p.mainSSRC]
-	// slog.Info("NoOpPacer: Writing packet", "payloadType", header.PayloadType)
-	return writer.Write(header, payload, attributes)
+	writer := p.mainWriter
+	res, err := writer.Write(header, payload, attributes)
+	// hdrExtID, ok := attributes.Get(cc.TwccExtensionAttributesKey).(uint8)
+	// if ok {
+	// 	twccExt := &rtp.TransportCCExtension{}
+	// 	raw := header.GetExtension(hdrExtID)
+	// 	err := twccExt.Unmarshal(raw)
+	// 	if err == nil {
+	// 		slog.Info("NoOpPacer: Writing packet", "payloadType", header.PayloadType, "seqNum", twccExt.TransportSequence)
+	// 	}
+	// }
+	return res, err
 
 	// if w, ok := p.ssrcToWriter[header.SSRC]; ok {
 	// 	slog.Info("NoOpPacer: Writing packet", "payloadType", header.PayloadType)
