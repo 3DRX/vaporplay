@@ -41,12 +41,14 @@ and after server exits, run `go tool pprof piongs piongs.prof`, and type `web` t
 ![piongs-client](./README.assets/piongs-client1.png)
 Or for local testing, go to http://localhost:8080.
 4. Click next, choose a game, and start!
+![piongs-client](./README.assets/piongs-client.png)
 
 ### Testing Input Device
 
 piongs-client includes a controller testing tool, at https://piongs-client.3drx.top/gamepad-test.
 ![piongs-client](./README.assets/gamepad-test.png)
-
+It also includes the detection of codec capabilities.at https://piongs-client.3drx.top/gamepad-test
+![piongs-client](./README.assets/codec-test.png)
 > During development, only Xbox Wireless Controller is tested.
 
 ## Acknowledgements
