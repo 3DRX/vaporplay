@@ -177,7 +177,7 @@ export default function Gameplay(props: {
             downloadLink.download = "recording.mp4"; // Save as an MP4 file
             downloadLink.click();
           };
-          mediaRecorder.start();
+          mediaRecorder.start(5000);
         }
 
         // Bind the stream to the video element
