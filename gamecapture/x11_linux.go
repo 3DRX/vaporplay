@@ -31,10 +31,14 @@ func deviceID(name string) string {
 
 // Start the game and block until the game window appears
 func Initialize(gameCfg *config.GameConfig) string {
-	cmd := exec.Command(STEAM_CMD, fmt.Sprintf(STEAM_URL, gameCfg.GameId))
-	_, err := cmd.Output()
-	if err != nil {
-		panic(err)
+	if gameCfg.GameId != "000000" {
+		cmd := exec.Command(STEAM_CMD, fmt.Sprintf(STEAM_URL, gameCfg.GameId))
+		_, err := cmd.Output()
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		slog.Info("no game id specified, skipping game start")
 	}
 	start := time.Now()
 	for {

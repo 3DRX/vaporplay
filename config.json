@@ -75,7 +75,7 @@
                 }
             ]
         },
-                {
+        {
             "game_id": "750920",
             "game_window_name": "Shadow of the Tomb Raider",
             "game_display_name": "Shadow of the Tomb Raider",
@@ -88,6 +88,13 @@
                     "process_name": "ShadowOfTheTombRaider"
                 }
             ]
+        },
+        {
+            "game_id": "000000",
+            "game_window_name": "VLC",
+            "game_display_name": "custom video",
+            "game_icon": "",
+            "end_game_commands": []
         }
     ]
 }
