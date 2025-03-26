@@ -38,7 +38,7 @@ Here is an explanation of what each entry in a game config means:
 2. To start server, run `./piongs -config=config.json`. For profiling, run `./piongs -config=config.json -cpuprofile=piongs.prof`
 and after server exits, run `go tool pprof piongs piongs.prof`, and type `web` to see the profile.
 3. After server started, go to https://piongs-client.3drx.top and fill in the correct server url.
-![piongs-client](./README.assets/piongs-client.png)
+![piongs-client](./README.assets/piongs-client1.png)
 Or for local testing, go to http://localhost:8080.
 4. Click next, choose a game, and start!
 
