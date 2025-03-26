@@ -50,6 +50,7 @@ function App() {
     },
   );
   const [game, setGame] = useState<GameInfoType | null>(null);
+  const [record, setRecord] = useLocalStorage("piongs-client-record", false);
 
   function onSubmit(values: FormType) {
     if (values.server) {
@@ -77,6 +78,7 @@ function App() {
       initial_bitrate: values.initial_bitrate,
       max_bitrate: values.max_bitrate,
     });
+    setRecord(values.record);
   }
 
   const onExit = useCallback(() => setStartGame(false), []);
@@ -84,7 +86,13 @@ function App() {
   return (
     <div className="max-h-svh">
       {server.length !== 0 && startGame && game ? (
-        <Gameplay server={server} game={game} codec={codec} onExit={onExit} />
+        <Gameplay
+          server={server}
+          game={game}
+          codec={codec}
+          onExit={onExit}
+          record={record}
+        />
       ) : (
         <>
           <Card className="mx-auto mt-10 max-w-[60rem]">
@@ -96,6 +104,7 @@ function App() {
               <ConnectionForm
                 defaultServer={server}
                 defaultCodec={codec}
+                defaultRecord={record}
                 onSubmit={onSubmit}
                 onFirstSubmit={onFirstSubmit}
               />

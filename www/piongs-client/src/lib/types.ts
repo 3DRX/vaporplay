@@ -29,6 +29,7 @@ export type CodecInfoType = z.infer<typeof codecInfo>;
 export const formSchema = codecInfo.extend({
   server: z.string().nonempty(),
   game: gameInfo,
+  record: z.boolean(),
 });
 
 export type FormType = z.infer<typeof formSchema>;

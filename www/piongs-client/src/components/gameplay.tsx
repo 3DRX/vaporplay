@@ -24,6 +24,7 @@ export default function Gameplay(props: {
   server: string;
   game: GameInfoType;
   codec: CodecInfoType;
+  record: boolean;
   onExit?: () => void;
 }) {
   const [showTopBar, setShowTopBar] = useState(true);
@@ -155,6 +156,29 @@ export default function Gameplay(props: {
         // Create a new media stream and add the video track to it
         const stream = new MediaStream();
         stream.addTrack(event.track);
+
+        if (props.record) {
+          const mimeType = "video/mp4; codecs=avc1.42E01E";
+          const recordedChunks: Blob[] = [];
+          const mediaRecorder = new MediaRecorder(stream, { mimeType });
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              recordedChunks.push(event.data);
+            }
+          };
+          mediaRecorder.onstop = () => {
+            // Combine recorded chunks into a Blob
+            const videoBlob = new Blob(recordedChunks, { type: mimeType });
+            // Create a URL for the Blob
+            const videoUrl = URL.createObjectURL(videoBlob);
+            // Create a download link
+            const downloadLink = document.createElement("a");
+            downloadLink.href = videoUrl;
+            downloadLink.download = "recording.mp4"; // Save as an MP4 file
+            downloadLink.click();
+          };
+          mediaRecorder.start();
+        }
 
         // Bind the stream to the video element
         videoRef.current.srcObject = stream;

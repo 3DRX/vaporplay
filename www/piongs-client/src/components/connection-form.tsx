@@ -25,10 +25,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { GetGameInfos } from "@/lib/datafetch";
 import SelectItemWithImage from "./select-custom";
+import { Switch } from "./ui/switch";
 
 export default function ConnectionForm(props: {
   defaultServer: string;
   defaultCodec: CodecInfoType;
+  defaultRecord: boolean;
   onSubmit: (values: FormType) => void;
   onFirstSubmit: (server: FormType) => void;
 }) {
@@ -38,6 +40,7 @@ export default function ConnectionForm(props: {
       ...props.defaultCodec,
       server: props.defaultServer,
       game: undefined,
+      record: props.defaultRecord,
     },
   });
 
@@ -94,108 +97,128 @@ export default function ConnectionForm(props: {
           )}
         />
 
-        <div className="flex flex-row flex-wrap gap-5 gap-y-2">
-          <FormField
-            control={form.control}
-            name="codec"
-            render={({ field }) => (
-              <FormItem>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="h-8 w-28">
-                      <SelectValue placeholder="select a codec"></SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Codec</SelectLabel>
-                      <SelectItem value="h264_nvenc">H.264</SelectItem>
-                      <SelectItem value="hevc_nvenc">H.265</SelectItem>
-                      <SelectItem value="av1_nvenc">AV1</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="frame_rate"
-            render={({ field }) => (
-              <FormItem>
-                <Select
-                  onValueChange={(v) => {
-                    // v is like 30FPS, 60FPS, etc. We need to extract the number
-                    const num = parseInt(v.match(/\d+/)![0]);
-                    field.onChange(num);
-                  }}
-                  defaultValue={`${field.value}FPS`}
-                >
-                  <FormControl>
-                    <SelectTrigger className="h-8 w-28">
-                      <SelectValue placeholder="select a codec"></SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Frame Rate</SelectLabel>
-                      <SelectItem value="30FPS">30FPS</SelectItem>
-                      <SelectItem value="60FPS">60FPS</SelectItem>
-                      <SelectItem value="90FPS">90FPS</SelectItem>
-                      <SelectItem value="120FPS">120FPS</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="initial_bitrate"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input
-                    className="h-8 w-28"
-                    ref={field.ref}
-                    value={field.value / 1_000_000}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        field.onChange(parseInt(e.target.value) * 1_000_000);
-                      }
+        <div className="flex w-full">
+          <div className="flex flex-row flex-wrap gap-5 gap-y-2">
+            <FormField
+              control={form.control}
+              name="codec"
+              render={({ field }) => (
+                <FormItem>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-8 w-28">
+                        <SelectValue placeholder="select a codec"></SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Codec</SelectLabel>
+                        <SelectItem value="h264_nvenc">H.264</SelectItem>
+                        <SelectItem value="hevc_nvenc">H.265</SelectItem>
+                        <SelectItem value="av1_nvenc">AV1</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="frame_rate"
+              render={({ field }) => (
+                <FormItem>
+                  <Select
+                    onValueChange={(v) => {
+                      // v is like 30FPS, 60FPS, etc. We need to extract the number
+                      const num = parseInt(v.match(/\d+/)![0]);
+                      field.onChange(num);
                     }}
-                    type="number"
-                  />
-                </FormControl>
-                <FormDescription>Initial Rate Mbps.</FormDescription>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="max_bitrate"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input
-                    className="h-8 w-28"
-                    ref={field.ref}
-                    value={field.value / 1_000_000}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        field.onChange(parseInt(e.target.value) * 1_000_000);
-                      }
-                    }}
-                    type="number"
-                  />
-                </FormControl>
-                <FormDescription>Max Rate Mbps.</FormDescription>
-              </FormItem>
-            )}
-          />
+                    defaultValue={`${field.value}FPS`}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-8 w-28">
+                        <SelectValue placeholder="select a codec"></SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Frame Rate</SelectLabel>
+                        <SelectItem value="30FPS">30FPS</SelectItem>
+                        <SelectItem value="60FPS">60FPS</SelectItem>
+                        <SelectItem value="90FPS">90FPS</SelectItem>
+                        <SelectItem value="120FPS">120FPS</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="initial_bitrate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      className="h-8 w-28"
+                      ref={field.ref}
+                      value={field.value / 1_000_000}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          field.onChange(parseInt(e.target.value) * 1_000_000);
+                        }
+                      }}
+                      type="number"
+                    />
+                  </FormControl>
+                  <FormDescription>Initial Rate Mbps.</FormDescription>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="max_bitrate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      className="h-8 w-28"
+                      ref={field.ref}
+                      value={field.value / 1_000_000}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          field.onChange(parseInt(e.target.value) * 1_000_000);
+                        }
+                      }}
+                      type="number"
+                    />
+                  </FormControl>
+                  <FormDescription>Max Rate Mbps.</FormDescription>
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grow" />
+          <div className="mr-4 mt-5 flex flex-col items-center gap-5 gap-y-2 sm:mr-10 sm:mt-0 sm:flex-row">
+            <FormField
+              control={form.control}
+              name="record"
+              render={({ field }) => {
+                return (
+                  <>
+                    <FormLabel>Record</FormLabel>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </>
+                );
+              }}
+            />
+          </div>
         </div>
 
         <FormField
