@@ -1,14 +1,20 @@
 package main
 
 import (
+	"embed"
 	"flag"
+	"io/fs"
 	"log/slog"
+	"net/http"
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/peerconnection"
 	"github.com/3DRX/piongs/signaling"
 	"github.com/pion/webrtc/v4"
 )
+
+//go:embed tmp/webui/*
+var embedFS embed.FS
 
 var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to file")
 var configPath = flag.String("config", "", "path to config file")
@@ -24,12 +30,18 @@ func main() {
 	sendCandidateChan := make(chan webrtc.ICECandidateInit)
 	recvCandidateChan := make(chan webrtc.ICECandidateInit)
 
+	subFS, err := fs.Sub(embedFS, "tmp/webui")
+	if err != nil {
+		panic(err)
+	}
+
 	signalingThread := signaling.NewSignalingThread(
 		cfg,
 		sendSDPChan,
 		recvSDPChan,
 		sendCandidateChan,
 		recvCandidateChan,
+		http.FS(subFS),
 	)
 	haveReceiverPromise := signalingThread.Spin()
 	sessionConfig := <-haveReceiverPromise
