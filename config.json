@@ -74,6 +74,20 @@
                     "process_name": "RiseOfTheTombRaider"
                 }
             ]
+        },
+                {
+            "game_id": "750920",
+            "game_window_name": "Shadow of the Tomb Raider",
+            "game_display_name": "Shadow of the Tomb Raider",
+            "game_icon": "",
+            "end_game_commands": [
+                {
+                    "flags": [
+                        "-9"
+                    ],
+                    "process_name": "ShadowOfTheTombRaider"
+                }
+            ]
         }
     ]
 }

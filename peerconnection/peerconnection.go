@@ -225,6 +225,13 @@ func (pc *PeerConnectionThread) Spin() {
 		}
 		pc.sendCandidateChan <- c.ToJSON()
 	})
+	var f *os.File
+	if pc.cpuProfile != "" {
+		f, err = os.Create(pc.cpuProfile)
+		if err != nil {
+			panic(err)
+		}
+	}
 	pc.peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		switch s {
 		case webrtc.PeerConnectionStateConnected:
@@ -243,28 +250,34 @@ func (pc *PeerConnectionThread) Spin() {
 				}
 			}
 			estimator := <-pc.estimatorChan
-			estimator.OnTargetBitrateChange(func(bitrate int) {
-				if bitrateController == nil {
-					slog.Warn("bitrate controller is nil")
-					return
-				}
-				nackBitrate := nack.GetNACKBitRate()
-				fecBitrate := flexfec.GetFECBitrate()
-				videoBitrate := bitrate - int(nackBitrate)
-				videoBitrate -= int(fecBitrate)
-				// TODO: minus audio bitrate here
-				slog.Info(
-					"setting bitrate",
-					"bitrate",
-					bitrate,
-					"nack",
-					fmt.Sprintf("%.2f%%", (nackBitrate/float64(bitrate))*100),
-					"fec",
-					fmt.Sprintf("%.2f%%", (fecBitrate/float64(bitrate))*100),
-				)
-				bitrateController.SetBitRate(videoBitrate)
-			})
+			if bitrateController != nil {
+				estimator.OnTargetBitrateChange(func(bitrate int) {
+					nackBitrate := nack.GetNACKBitRate()
+					fecBitrate := flexfec.GetFECBitrate()
+					videoBitrate := bitrate - int(nackBitrate) - int(fecBitrate)
+					// TODO: minus audio bitrate here
+					bitrateController.SetBitRate(videoBitrate)
+					slog.Info(
+						"setting bitrate",
+						"bitrate",
+						bitrate,
+						"nack",
+						fmt.Sprintf("%.2f%%", (nackBitrate/float64(bitrate))*100),
+						"fec",
+						fmt.Sprintf("%.2f%%", (fecBitrate/float64(bitrate))*100),
+					)
+				})
+			} else {
+				slog.Warn("Current video encoder does not implement SetBitrate")
+			}
+			if f != nil {
+				pprof.StartCPUProfile(f)
+			}
 		case webrtc.PeerConnectionStateClosed:
+			if f != nil {
+				pprof.StopCPUProfile()
+				f.Close()
+			}
 			slog.Info("Peer connection closed")
 			// kill game processes
 			for _, processConfig := range pc.gameConfig.EndGameCommands {
@@ -290,14 +303,6 @@ func (pc *PeerConnectionThread) Spin() {
 	go pc.handleRemoteICECandidate()
 	pc.sendSDPChan <- offer
 	remoteSDP := <-pc.recvSDPChan
-	if pc.cpuProfile != "" {
-		f, err := os.Create(pc.cpuProfile)
-		if err != nil {
-			panic(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
 	slog.Info("Before calling SetRemoteDescription", "sender parameters", pc.peerConnection.GetTransceivers()[0].Sender().GetParameters())
 	pc.peerConnection.SetRemoteDescription(remoteSDP)
 	select {

@@ -82,7 +82,6 @@ func (r *FecInterceptor) BindLocalStream(
 	r.flexFecEncoder = NewFlexEncoder03(info.PayloadTypeForwardErrorCorrection, info.SSRCForwardErrorCorrection)
 
 	return interceptor.RTPWriterFunc(
-		// TODO: each frame should be a FEC group, not every 5 packets
 		func(header *rtp.Header, payload []byte, attributes interceptor.Attributes) (int, error) {
 			r.packetBuffer = append(r.packetBuffer, rtp.Packet{
 				Header:  *header,
@@ -124,20 +123,23 @@ func (r *FecInterceptor) BindLocalStream(
 
 func (r *FecInterceptor) GetFECBitRate() float64 {
 	r.mu.Lock()
-	defer r.mu.Unlock()
+	startTime := r.startTime
+	fecBytes := r.fecBytes
+	r.mu.Unlock()
 
-	if r.startTime.IsZero() {
+	if startTime.IsZero() {
 		return 0
 	}
-
-	duration := time.Since(r.startTime).Seconds()
+	now := time.Now()
+	duration := now.Sub(startTime).Seconds()
 	if duration == 0 {
 		return 0
 	}
-
-	bitrate := (float64(r.fecBytes) * 8) / duration
-	r.fecBytes = 0
-	r.startTime = time.Now()
+	bitrate := (float64(fecBytes) * 8) / duration
+	r.mu.Lock()
+	r.fecBytes -= fecBytes
+	r.startTime = now
+	r.mu.Unlock()
 	return bitrate
 }
 
