@@ -19,6 +19,8 @@ Also, for the nvenc hardware encoder to work, a nvidia graphics card and it's dr
 
 This project's Makefile use a FFmpeg build from source, but doesn't handle the dependency installation and configuration for you.
 
+Since we use nvenc, it's required to install https://github.com/FFmpeg/nv-codec-headers.
+
 ## Configuration
 
 All configurations is in `config.json`.

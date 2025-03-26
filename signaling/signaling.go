@@ -23,6 +23,7 @@ type SignalingThread struct {
 	recvCandidateChan   chan<- webrtc.ICECandidateInit
 	connecting          bool
 	httpServer          *http.Server
+	webuiDir            http.FileSystem
 }
 
 func NewSignalingThread(
@@ -31,6 +32,7 @@ func NewSignalingThread(
 	recvSDPChan chan<- webrtc.SessionDescription,
 	sendCandidateChan <-chan webrtc.ICECandidateInit,
 	recvCandidateChan chan<- webrtc.ICECandidateInit,
+	webuiDir http.FileSystem,
 ) *SignalingThread {
 	return &SignalingThread{
 		cfg: cfg,
@@ -46,11 +48,14 @@ func NewSignalingThread(
 		sendCandidateChan:   sendCandidateChan,
 		recvCandidateChan:   recvCandidateChan,
 		connecting:          false,
+		webuiDir:            webuiDir,
 	}
 }
 
 func (s *SignalingThread) Spin() <-chan *config.SessionConfig {
+	fileServer := http.FileServer(s.webuiDir)
 	mux := http.NewServeMux()
+	mux.Handle("/", fileServer)
 	mux.Handle("GET /games", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jsonGames, err := json.Marshal(s.cfg.Games)
 		if err != nil {
