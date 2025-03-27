@@ -31,6 +31,7 @@ export default function Gameplay(props: {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useGamepad({
     onGamepadStateChange: (gamepadState, _) => {
@@ -156,9 +157,12 @@ export default function Gameplay(props: {
         // Create a new media stream and add the video track to it
         const stream = new MediaStream();
         stream.addTrack(event.track);
+        // Bind the stream to the video element
+        videoRef.current.srcObject = stream;
+        console.log("Video track added to video element");
 
         if (props.record) {
-          const mimeType = "video/mp4; codecs=avc1.42E01E";
+          const mimeType = "video/mp4";
           const recordedChunks: Blob[] = [];
           const mediaRecorder = new MediaRecorder(stream, { mimeType });
           mediaRecorder.ondataavailable = (event) => {
@@ -184,12 +188,11 @@ export default function Gameplay(props: {
             downloadLink.download = `${safeGameName}_${timestamp}.mp4`;
             downloadLink.click();
           };
-          mediaRecorder.start(5000);
+          mediaRecorder.start(1000);
+          if (mediaRecorderRef.current && mediaRecorderRef.current == null) {
+            mediaRecorderRef.current = mediaRecorder;
+          }
         }
-
-        // Bind the stream to the video element
-        videoRef.current.srcObject = stream;
-        console.log("Video track added to video element");
       }
     };
 
@@ -279,6 +282,7 @@ export default function Gameplay(props: {
           <Button
             variant="link"
             onClick={() => {
+              mediaRecorderRef.current?.stop();
               peerConnectionRef.current?.close();
               props.onExit && props.onExit();
             }}
