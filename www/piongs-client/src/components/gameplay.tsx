@@ -31,6 +31,7 @@ export default function Gameplay(props: {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useGamepad({
     onGamepadStateChange: (gamepadState, _) => {
@@ -156,9 +157,12 @@ export default function Gameplay(props: {
         // Create a new media stream and add the video track to it
         const stream = new MediaStream();
         stream.addTrack(event.track);
+        // Bind the stream to the video element
+        videoRef.current.srcObject = stream;
+        console.log("Video track added to video element");
 
         if (props.record) {
-          const mimeType = "video/mp4; codecs=avc1.42E01E";
+          const mimeType = "video/mp4";
           const recordedChunks: Blob[] = [];
           const mediaRecorder = new MediaRecorder(stream, { mimeType });
           mediaRecorder.ondataavailable = (event) => {
@@ -174,36 +178,21 @@ export default function Gameplay(props: {
             // Create a download link
             const gameName = props.game.game_display_name || "unknown";
             // Create safe filename (remove special characters)
-            const safeGameName = gameName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-            // 时间戳，东八区
-            const chinaDate = new Intl.DateTimeFormat('zh-CN', {
-              timeZone: 'Asia/Shanghai',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-            }).format(new Date()).replace(/\//g, '-');
-
-            const chinaTime = new Intl.DateTimeFormat('zh-CN', {
-              timeZone: 'Asia/Shanghai',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: false
-            }).format(new Date()).replace(/:/g, '-');
-
-            const timestamp = `${chinaDate}_${chinaTime}`;
+            const safeGameName = gameName
+              .replace(/[^\w\s-]/g, "")
+              .replace(/\s+/g, "-");
+            const timestamp = new Date().toLocaleString().replace(/, /, "_");
             // Create a download link
             const downloadLink = document.createElement("a");
             downloadLink.href = videoUrl;
             downloadLink.download = `${safeGameName}_${timestamp}.mp4`;
             downloadLink.click();
           };
-          mediaRecorder.start(5000);
+          mediaRecorder.start(1000);
+          if (mediaRecorderRef.current && mediaRecorderRef.current == null) {
+            mediaRecorderRef.current = mediaRecorder;
+          }
         }
-
-        // Bind the stream to the video element
-        videoRef.current.srcObject = stream;
-        console.log("Video track added to video element");
       }
     };
 
@@ -293,6 +282,7 @@ export default function Gameplay(props: {
           <Button
             variant="link"
             onClick={() => {
+              mediaRecorderRef.current?.stop();
               peerConnectionRef.current?.close();
               props.onExit && props.onExit();
             }}
