@@ -174,24 +174,10 @@ export default function Gameplay(props: {
             // Create a download link
             const gameName = props.game.game_display_name || "unknown";
             // Create safe filename (remove special characters)
-            const safeGameName = gameName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-            // 时间戳，东八区
-            const chinaDate = new Intl.DateTimeFormat('zh-CN', {
-              timeZone: 'Asia/Shanghai',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-            }).format(new Date()).replace(/\//g, '-');
-
-            const chinaTime = new Intl.DateTimeFormat('zh-CN', {
-              timeZone: 'Asia/Shanghai',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: false
-            }).format(new Date()).replace(/:/g, '-');
-
-            const timestamp = `${chinaDate}_${chinaTime}`;
+            const safeGameName = gameName
+              .replace(/[^\w\s-]/g, "")
+              .replace(/\s+/g, "-");
+            const timestamp = new Date().toLocaleString().replace(/, /, "_");
             // Create a download link
             const downloadLink = document.createElement("a");
             downloadLink.href = videoUrl;
