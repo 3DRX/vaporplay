@@ -181,7 +181,12 @@ export default function Gameplay(props: {
             const safeGameName = gameName
               .replace(/[^\w\s-]/g, "")
               .replace(/\s+/g, "-");
-            const timestamp = new Date().toLocaleString().replace(/, /, "_");
+            const timestamp = new Date()
+              .toLocaleString()
+              .replace(/, /, "_")
+              .replace(/\s+/g, "_")
+              .replaceAll(/\//g, "-")
+              .replaceAll(/:/g, "-");
             // Create a download link
             const downloadLink = document.createElement("a");
             downloadLink.href = videoUrl;
