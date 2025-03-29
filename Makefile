@@ -7,7 +7,7 @@ CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/lo
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
 
-piongs: tmp/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
+piongs: tmp/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so gamecapture/libnvfbcreader.so
 	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o piongs
 
 gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
@@ -15,6 +15,9 @@ gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_mat
 
 gamecapture/libgamecapture.so: gamecapture/game_capture.c gamecapture/game_capture.h
 	cd gamecapture && $(CC) -shared -o libgamecapture.so -fPIC game_capture.c $(FLAGS)
+
+gamecapture/libnvfbcreader.so: gamecapture/nvfbc_reader.c gamecapture/nvfbc_reader.h
+	cd gamecapture && $(CC) -shared -o libnvfbcreader.so -fPIC nvfbc_reader.c $(FLAGS)
 
 tmp/webui: www/piongs-client
 	cd www/piongs-client && npm run build

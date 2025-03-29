@@ -4,6 +4,7 @@ package gamecapture
 #cgo LDFLAGS: -lX11 -lXext
 #include "game_capture.h"
 #include "window_match.h"
+#include "nvfbc_reader.h"
 #include <X11/Xlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -248,7 +249,7 @@ func newShmImage(dp *C.Display, window C.Window) (*shmImage, error) {
 	return s, nil
 }
 
-type reader struct {
+type shmReader struct {
 	img *shmImage
 	wm  *windowmatch
 }
@@ -267,7 +268,7 @@ func getShmImageFromWindowMatch(wm *windowmatch) (*shmImage, error) {
 	return img, nil
 }
 
-func newReader(windowname string) (*reader, error) {
+func newShmReader(windowname string) (*shmReader, error) {
 	wm, err := openWindow(windowname)
 	if err != nil || wm == nil {
 		return nil, errors.New("failed to open display")
@@ -278,17 +279,17 @@ func newReader(windowname string) (*reader, error) {
 		return nil, err
 	}
 
-	return &reader{
+	return &shmReader{
 		img: img,
 		wm:  wm,
 	}, nil
 }
 
-func (r *reader) Size() (int, int) {
+func (r *shmReader) Size() (int, int) {
 	return int(r.img.img.width), int(r.img.img.height)
 }
 
-func (r *reader) Read() *shmImage {
+func (r *shmReader) Read() *shmImage {
 	C.XShmGetImage(r.wm.display, r.wm.window, r.img.img, 0, 0, C.AllPlanes)
 	r.img.b = C.GoBytes(
 		unsafe.Pointer(r.img.img.data),
@@ -297,7 +298,78 @@ func (r *reader) Read() *shmImage {
 	return r.img
 }
 
-func (r *reader) Close() {
+func (r *shmReader) Close() {
 	r.img.Free()
 	r.wm.Close()
+}
+
+type nvfbcReader struct {
+	pfn           C.NVFBC_API_FUNCTION_LIST
+	fbcHandle     C.NVFBC_SESSION_HANDLE
+	sessionParams C.NVFBC_CREATE_CAPTURE_SESSION_PARAMS
+	buffer        unsafe.Pointer
+	info          C.NVFBC_FRAME_GRAB_INFO
+	params        C.NVFBC_TOSYS_GRAB_FRAME_PARAMS
+}
+
+func newNvFBCReader() (*nvfbcReader, error) {
+	pfn := C.nvfbc_get_functions()
+	fbcHandle := C.nvfbc_create_session(pfn)
+	sessionParams := C.nvfbc_create_session_params(pfn, fbcHandle)
+	buffer := C.nvfbc_setup(pfn, fbcHandle)
+	info := C.nvfbc_create_grab_frame_info(pfn, fbcHandle)
+	params := C.nvfbc_create_grab_frame_params(pfn, fbcHandle, info)
+	return &nvfbcReader{
+		pfn:           pfn,
+		fbcHandle:     fbcHandle,
+		sessionParams: sessionParams,
+		buffer:        unsafe.Pointer(buffer),
+		info:          info,
+		params:        params,
+	}, nil
+}
+
+func (r *nvfbcReader) Size() (int, int) {
+	return int(r.sessionParams.frameSize.w), int(r.sessionParams.frameSize.h)
+}
+
+// func rgbaToRGBAImageDirectUnsafe(rgbaData []byte, width, height int) *image.RGBA {
+// 	if len(rgbaData) != width*height*4 {
+// 		slog.Error("rgbaToRGBAImageDirectUnsafe: invalid rgba data length", "length", len(rgbaData), "expected", width*height*4)
+// 		return nil
+// 	}
+
+// 	rect := image.Rect(0, 0, width, height)
+// 	img := &image.RGBA{
+// 		Stride: width * 4,
+// 		Rect:   rect,
+// 	}
+
+// 	// Use reflection and unsafe to directly set the Pix field.
+// 	// This is extremely dangerous and should only be done if you
+// 	// understand the implications.
+// 	header := (*reflect.SliceHeader)(unsafe.Pointer(&img.Pix))
+// 	header.Data = uintptr(unsafe.Pointer(&rgbaData[0]))
+// 	header.Len = len(rgbaData)
+// 	header.Cap = len(rgbaData)
+
+// 	return img
+// }
+
+func (r *nvfbcReader) Read() *image.RGBA {
+	C.nvfbc_grab_frame(r.pfn, r.fbcHandle, r.params)
+	w := int(r.sessionParams.frameSize.w)
+	h := int(r.sessionParams.frameSize.h)
+	// img := rgbaToRGBAImageDirectUnsafe(C.GoBytes(r.buffer, C.int(w*h*4)), w, h)
+	var img image.RGBA
+	// // r.buffer is a pointer to a buffer of BGRA pixels
+	// // we need to copy it to a image
+	img.Pix = C.GoBytes(r.buffer, C.int(w*h*4))
+	img.Stride = int(r.sessionParams.frameSize.w) * 4
+	img.Rect = image.Rect(0, 0, int(r.sessionParams.frameSize.w), int(r.sessionParams.frameSize.h))
+	return &img
+}
+
+func (r *nvfbcReader) Close() {
+	C.nvfbc_destroy_session(r.pfn, r.fbcHandle)
 }

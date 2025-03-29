@@ -16,7 +16,7 @@ import (
 
 type screen struct {
 	name   string
-	reader *reader
+	reader *nvfbcReader
 	tick   *time.Ticker
 }
 
@@ -82,7 +82,7 @@ func Initialize(gameCfg *config.GameConfig) string {
 }
 
 func (s *screen) Open() error {
-	r, err := newReader(s.name)
+	r, err := newNvFBCReader()
 	if err != nil {
 		return err
 	}
@@ -104,21 +104,19 @@ func (s *screen) VideoRecord(p prop.Media) (video.Reader, error) {
 	}
 	s.tick = time.NewTicker(time.Duration(float32(time.Second) / p.FrameRate))
 
-	var dst image.RGBA
 	reader := s.reader
 
 	r := video.ReaderFunc(func() (image.Image, func(), error) {
 		<-s.tick.C
-		img := reader.Read().ToRGBA(&dst)
+		img := reader.Read()
 		return img, func() {}, nil
 	})
 	return r, nil
 }
 
 func (s *screen) Properties() []prop.Media {
-	rect := s.reader.img.Bounds()
-	w := rect.Dx()
-	h := rect.Dy()
+	w, h := s.reader.Size()
+	slog.Info("game capture properties", "width", w, "height", h)
 	return []prop.Media{
 		{
 			DeviceID: deviceID(s.name),
