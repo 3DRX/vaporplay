@@ -84,10 +84,14 @@ nvfbc_create_session_params(NVFBC_API_FUNCTION_LIST pFn,
 
   createCaptureParams.dwVersion = NVFBC_CREATE_CAPTURE_SESSION_PARAMS_VER;
   createCaptureParams.eCaptureType = NVFBC_CAPTURE_TO_SYS;
-  createCaptureParams.bWithCursor = NVFBC_TRUE;
+  createCaptureParams.bWithCursor = NVFBC_FALSE;
   createCaptureParams.frameSize.w = framebufferWidth;
   createCaptureParams.frameSize.h = framebufferHeight;
-  createCaptureParams.eTrackingType = NVFBC_TRACKING_DEFAULT;
+  createCaptureParams.eTrackingType = NVFBC_TRACKING_SCREEN;
+  createCaptureParams.dwSamplingRateMs = 1000 / 120;
+  createCaptureParams.bAllowDirectCapture = NVFBC_TRUE;
+  createCaptureParams.bPushModel = NVFBC_TRUE;
+  createCaptureParams.bDisableAutoModesetRecovery = NVFBC_TRUE;
 
   fbcStatus = pFn.nvFBCCreateCaptureSession(fbcHandle, &createCaptureParams);
   // if (fbcStatus != NVFBC_SUCCESS) {
@@ -130,7 +134,7 @@ nvfbc_create_grab_frame_params(NVFBC_API_FUNCTION_LIST pFn,
   memset(&grabParams, 0, sizeof(grabParams));
 
   grabParams.dwVersion = NVFBC_TOSYS_GRAB_FRAME_PARAMS_VER;
-  grabParams.dwFlags = NVFBC_TOSYS_GRAB_FLAGS_FORCE_REFRESH;
+  grabParams.dwFlags = NVFBC_TOSYS_GRAB_FLAGS_NOWAIT;
   grabParams.pFrameGrabInfo = &frameInfo;
   return grabParams;
 }
