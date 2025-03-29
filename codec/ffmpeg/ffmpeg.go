@@ -276,6 +276,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	codecCtx.SetFramerate(codecCtx.TimeBase().Invert())
 	codecCtx.SetBitRate(int64(params.BitRate))
 	codecCtx.SetGopSize(params.KeyFrameInterval)
+	codecCtx.SetMaxBFrames(0)
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
@@ -302,7 +303,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 		codecOptions.Set("forced-idr", "1", 0)
 		codecOptions.Set("zerolatency", "1", 0)
 		codecOptions.Set("delay", "0", 0)
-		codecOptions.Set("tune", "ull", 0)
+		codecOptions.Set("tune", "ll", 0)
 		codecOptions.Set("preset", "p1", 0)
 		codecOptions.Set("rc", "cbr", 0)
 	case "vp8_vaapi", "h264_vaapi", "hevc_vaapi":
