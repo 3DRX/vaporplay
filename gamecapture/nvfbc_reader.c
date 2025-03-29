@@ -98,6 +98,7 @@ nvfbc_create_session_params(NVFBC_API_FUNCTION_LIST pFn,
   //   fprintf(stderr, "%s\n", pFn.nvFBCGetLastErrorStr(fbcHandle));
   //   return 1;
   // }
+  XCloseDisplay(dpy);
   return createCaptureParams;
 }
 
