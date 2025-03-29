@@ -258,6 +258,10 @@ func getShmImageFromWindowMatch(wm *windowmatch) (*shmImage, error) {
 		return nil, errors.New("no XShm support")
 	}
 
+	// get default root window
+	root := C.XDefaultRootWindow(wm.display)
+	wm.window = root
+
 	img, err := newShmImage(wm.display, wm.window)
 	if err != nil {
 		wm.Close()
