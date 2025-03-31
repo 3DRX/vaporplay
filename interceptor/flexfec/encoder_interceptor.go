@@ -45,7 +45,7 @@ func NewFecInterceptor(opts ...FecOption) (*FecInterceptorFactory, error) {
 func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Interceptor, error) {
 	interceptor := &FecInterceptor{
 		packetBuffer:       make([]rtp.Packet, 0),
-		minNumMediaPackets: 3,
+		minNumMediaPackets: 5,
 	}
 
 	instance = interceptor
@@ -93,8 +93,7 @@ func (r *FecInterceptor) BindLocalStream(
 
 			// Send the FEC packets
 			var fecPackets []rtp.Packet
-			// for frame smaller than 5 packets, encode FEC with next frame
-			if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
+			if len(r.packetBuffer) >= int(r.minNumMediaPackets) {
 				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, 1)
 
 				for i := range fecPackets {
