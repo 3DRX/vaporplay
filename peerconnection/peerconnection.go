@@ -89,10 +89,10 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	fecInterceptor, err := flexfec.NewFecInterceptor()
-	if err != nil {
-		panic(err)
-	}
+	// fecInterceptor, err := flexfec.NewFecInterceptor()
+	// if err != nil {
+	// 	panic(err)
+	// }
 	if err := m.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
 	); err != nil {
@@ -110,7 +110,9 @@ func NewPeerConnectionThread(
 	}
 	i.Add(congestionControllerFactory)
 	i.Add(twccInterceptor)
-	i.Add(fecInterceptor)
+	// FIXME: currently, enabling flexfec will cause problem in browser decoding the video.
+	// so we disable it for now.
+	// i.Add(fecInterceptor)
 	i.Add(nackResponder)
 	settingEngine := webrtc.SettingEngine{}
 	settingEngine.SetEphemeralUDPPortRange(cfg.EphemeralUDPPortMin, cfg.EphemeralUDPPortMax)
@@ -421,10 +423,10 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	err = m.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeFlexFEC,
+				MimeType:     webrtc.MimeTypeFlexFEC + "-03",
 				ClockRate:    9000,
 				Channels:     0,
-				SDPFmtpLine:  "repair-window=200000", // 200ms
+				SDPFmtpLine:  "repair-window=10000000",
 				RTCPFeedback: nil,
 			},
 			PayloadType: 118,
