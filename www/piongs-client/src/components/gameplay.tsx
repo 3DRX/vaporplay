@@ -8,7 +8,9 @@ import { toGamepadStateDto } from "@/lib/utils";
 type StatsType = {
   timestamp: number;
   bytesReceived: number;
+  fecBytesReceived: number;
   bitrate: number;
+  fecBitrate: number;
   nackCount: number;
   packetsReceived: number;
   frameRate: number;
@@ -18,6 +20,9 @@ type StatsType = {
   rtt: number | undefined;
   codec: string;
   loss: number;
+  totalProcessingDelay: number;
+  jitterBufferEmittedCount: number;
+  processingDelay: number | undefined;
 };
 
 export default function Gameplay(props: {
@@ -71,7 +76,9 @@ export default function Gameplay(props: {
   const [stats, setStats] = useState<StatsType>({
     timestamp: 0,
     bytesReceived: 0,
+    fecBytesReceived: 0,
     bitrate: 0, // Mbps
+    fecBitrate: 0, // Mbps
     nackCount: 0,
     packetsReceived: 0,
     frameRate: 0,
@@ -81,6 +88,9 @@ export default function Gameplay(props: {
     rtt: undefined,
     codec: "",
     loss: 0,
+    totalProcessingDelay: 0,
+    jitterBufferEmittedCount: 0,
+    processingDelay: undefined,
   });
 
   // Stats collection interval
@@ -99,16 +109,22 @@ export default function Gameplay(props: {
         if (stat.type === "candidate-pair" && stat.state === "succeeded") {
           setStats((prev) => ({
             ...prev,
-            rtt: stat.currentRoundTripTime,
+            rtt: stat.currentRoundTripTime * 1000,
           }));
         }
         if (stat.type === "inbound-rtp" && stat.kind === "video") {
+          console;
           setStats((prev) => ({
             ...prev,
             timestamp: stat.timestamp,
             bytesReceived: stat.bytesReceived,
+            fecBytesReceived: stat.fecBytesReceived,
             bitrate:
               ((stat.bytesReceived - prev.bytesReceived) * 8) /
+              1_000_000 /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            fecBitrate:
+              ((stat.fecBytesReceived - prev.fecBytesReceived) * 8) /
               1_000_000 /
               ((stat.timestamp - prev.timestamp) / 1000),
             nackCount: stat.nackCount,
@@ -126,6 +142,13 @@ export default function Gameplay(props: {
               ((stat.nackCount - prev.nackCount) /
                 (stat.packetsReceived - prev.packetsReceived)) *
               100,
+            totalProcessingDelay: stat.totalProcessingDelay,
+            jitterBufferEmittedCount: stat.jitterBufferEmittedCount,
+            processingDelay:
+              ((stat.totalProcessingDelay - prev.totalProcessingDelay) /
+                (stat.jitterBufferEmittedCount -
+                  prev.jitterBufferEmittedCount)) *
+              1000,
           }));
         }
       }
@@ -262,10 +285,16 @@ export default function Gameplay(props: {
               <span>{stats.bitrate.toFixed(2)} Mbps</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-white/60">RTT</span>
+              <span className="text-xs text-white/60">FEC</span>
               <span>
-                {stats.rtt ? (stats.rtt * 1000).toFixed(2) + " ms" : "N/A"}
+                {stats.fecBitrate
+                  ? stats.fecBitrate.toFixed(2) + " Mbps"
+                  : "N/A"}
               </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">RTT</span>
+              <span>{stats.rtt ? stats.rtt.toFixed(0) + "ms" : "N/A"}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Loss</span>
@@ -282,6 +311,14 @@ export default function Gameplay(props: {
             <div className="flex flex-col">
               <span className="text-xs text-white/60">Codec</span>
               <span>{stats.codec}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Decode</span>
+              <span>
+                {stats.processingDelay
+                  ? stats.processingDelay.toFixed(0) + "ms"
+                  : "N/A"}
+              </span>
             </div>
           </div>
           <Button
