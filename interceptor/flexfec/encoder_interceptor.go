@@ -5,6 +5,7 @@ package flexfec
 
 import (
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
@@ -24,6 +25,14 @@ type FecInterceptor struct {
 	fecBytes  uint64
 	startTime time.Time
 	mu        sync.Mutex
+
+	//新增字段，用来动态调整FEC的参数
+	protectionMethod *ProtectionMethod
+	params           *ProtectionParams
+	packetsPerFrame  *MovingAverage
+	lastStatsUpdate  time.Time
+	currentLossRate  float32
+	currentRTT       int64
 }
 
 var instance *FecInterceptor
@@ -47,6 +56,13 @@ func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Intercepto
 		packetBuffer:       make([]rtp.Packet, 0),
 		minNumMediaPackets: 3,
 	}
+	// 添加
+	interceptor.protectionMethod = ProtectionMethod()
+	interceptor.params = &ProtectionParams{
+		// 初始值
+	}
+	interceptor.packetsPerFrame = MovingAverage(0.9999)
+	interceptor.lastStatsUpdate = time.Now()
 
 	instance = interceptor
 
@@ -95,7 +111,9 @@ func (r *FecInterceptor) BindLocalStream(
 			var fecPackets []rtp.Packet
 			// for frame smaller than 5 packets, encode FEC with next frame
 			if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
-				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, 1)
+				// 计算应该生成多少个 FEC 包
+				numFECPackets := r.calculateNumFECPackets()
+				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, numFECPackets)
 
 				for i := range fecPackets {
 					size := uint64(fecPackets[i].Header.MarshalSize() + len(fecPackets[i].Payload))
@@ -168,4 +186,52 @@ func GetFECBitrate() float64 {
 		return 0
 	}
 	return instance.GetFECBitRate()
+}
+
+// 添加新方法计算需要的 FEC 包数量
+func (r *FecInterceptor) calculateNumFECPackets() uint32 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// 1. 检查丢包率是否过低无需保护
+	if r.currentLossRate < 0.01 { // 低于1%时不添加保护
+		return 0
+	}
+
+	// 2. 更新保护参数
+	// 假设 r.protectionMethod 是 ProtectionCalculator 的实例
+	r.protectionMethod.UpdateRTT(r.currentRTT)
+	r.protectionMethod.UpdatePacketLoss(r.currentLossRate)
+
+	// 3. 计算保护因子
+	deltaFactor, _ := r.protectionMethod.CalculateProtectionFactors()
+
+	// 4. 基于保护因子计算 FEC 包数量
+	mediaPackets := len(r.packetBuffer)
+	fecRatio := float64(deltaFactor) / 255.0
+	fecCount := fecRatio * float64(mediaPackets) / (1.0 - fecRatio)
+
+	// 至少生成1个 FEC 包
+	result := uint32(math.Max(1, math.Round(fecCount)))
+
+	// 限制最大 FEC 包数
+	maxFec := uint32(mediaPackets) / 2
+	if result > maxFec && maxFec > 0 {
+		result = maxFec
+	}
+
+	return result
+}
+
+// 添加设置网络状态的方法
+func (r *FecInterceptor) SetLossRate(lossRate float32) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.currentLossRate = lossRate
+}
+
+func (r *FecInterceptor) SetRTT(rtt int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.currentRTT = rtt
 }
