@@ -23,6 +23,12 @@ type StatsType = {
   totalProcessingDelay: number;
   jitterBufferEmittedCount: number;
   processingDelay: number | undefined;
+  recvFrames: number;
+  decodeFrames: number;
+  dropFrames: number;
+  recvFps: number | undefined;
+  decodeFps: number | undefined;
+  dropFps: number | undefined;
 };
 
 export default function Gameplay(props: {
@@ -91,6 +97,12 @@ export default function Gameplay(props: {
     totalProcessingDelay: 0,
     jitterBufferEmittedCount: 0,
     processingDelay: undefined,
+    recvFrames: 0,
+    decodeFrames: 0,
+    dropFrames: 0,
+    recvFps: undefined,
+    decodeFps: undefined,
+    dropFps: undefined,
   });
 
   // Stats collection interval
@@ -149,6 +161,18 @@ export default function Gameplay(props: {
                 (stat.jitterBufferEmittedCount -
                   prev.jitterBufferEmittedCount)) *
               1000,
+            recvFrames: stat.framesReceived,
+            decodeFrames: stat.framesDecoded,
+            dropFrames: stat.framesDropped,
+            recvFps:
+              (stat.framesReceived - prev.recvFrames) /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            decodeFps:
+              (stat.framesDecoded - prev.decodeFrames) /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            dropFps:
+              (stat.framesDropped - prev.dropFrames) /
+              ((stat.timestamp - prev.timestamp) / 1000),
           }));
         }
       }
@@ -318,6 +342,24 @@ export default function Gameplay(props: {
                 {stats.processingDelay
                   ? stats.processingDelay.toFixed(0) + "ms"
                   : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Recv</span>
+              <span>
+                {stats.recvFps ? stats.recvFps.toFixed(0) + "fps" : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Decode</span>
+              <span>
+                {stats.decodeFps ? stats.decodeFps.toFixed(0) + "fps" : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">Drop</span>
+              <span>
+                {stats.dropFps ? stats.dropFps.toFixed(0) + "fps" : "N/A"}
               </span>
             </div>
           </div>
