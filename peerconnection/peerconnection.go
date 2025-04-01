@@ -19,6 +19,7 @@ import (
 	"github.com/3DRX/piongs/interceptor/twcc"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/report"
 	"github.com/pion/sdp/v3"
 
 	"github.com/pion/mediadevices"
@@ -108,6 +109,11 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
+	senderReportInterceptor, err := report.NewSenderInterceptor()
+	if err != nil {
+		panic(err)
+	}
+	i.Add(senderReportInterceptor)
 	i.Add(congestionControllerFactory)
 	i.Add(twccInterceptor)
 	// FIXME: currently, enabling flexfec will cause problem in browser decoding the video.
