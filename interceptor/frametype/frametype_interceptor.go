@@ -75,7 +75,17 @@ func (i *FrameTypeInterceptor) BindLocalStream(
 						frameTypeData.FrameType = FrameTypeDeltaFrame
 					}
 				} else if nalUnitType == 24 {
-					slog.Warn("FrameTypeInterceptor nalUnitType not implemented", "nalUnitType", nalUnitType)
+					// For STAP-A, we only read the first NAL unit header,
+					// and assume the rest are the same as the first one.
+					S = payload[3] >> 7
+					h264NalUnitType = payload[3] & 0x1F
+					frameTypeData.Start = S == 1
+					switch h264NalUnitType {
+					case 5:
+						frameTypeData.FrameType = FrameTypeKeyFrame
+					default:
+						frameTypeData.FrameType = FrameTypeDeltaFrame
+					}
 				} else {
 					slog.Warn("FrameTypeInterceptor nalUnitType not supported", "nalUnitType", nalUnitType)
 				}
