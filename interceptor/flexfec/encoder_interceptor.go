@@ -37,7 +37,6 @@ type FecInterceptor struct {
 	codecWidth           int                  // 编码宽度
 	codecHeight          int                  // 编码高度
 	numLayers            int                  // 编码层数
-	lastStatsUpdateTime  time.Time            // 上次统计更新时间
 	framePacketCount     int                  // 当前帧的包计数
 	isFirstPacketInFrame bool
 }
@@ -74,7 +73,6 @@ func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Intercepto
 		codecWidth:           0,
 		codecHeight:          0,
 		numLayers:            1,
-		lastStatsUpdateTime:  time.Now(),
 		isFirstPacketInFrame: true,
 	}
 
@@ -184,6 +182,13 @@ func (r *FecInterceptor) BindLocalStream(
 			r.framePacketCount++
 			r.isFirstPacketInFrame = false
 			r.mu.Unlock()
+
+			// An example of how to get the frame type data from the attributes
+			// frameTypeData, ok := attributes.Get(frametype.AttributesKey).(frametype.FrameTypeData)
+			// if ok {
+			// 	slog.Info("FecInterceptor", "frameTypeData", frameTypeData)
+			// }
+
 			// 检测关键帧并更新统计
 			if isFirstPacket {
 				isKey := isKeyFrame(r.packetBuffer[len(r.packetBuffer)-1])
