@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/3DRX/piongs/interceptor/frametype"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtp"
 )
@@ -87,6 +88,12 @@ func (r *FecInterceptor) BindLocalStream(
 				Header:  *header,
 				Payload: payload,
 			})
+
+			// // An example of how to get the frame type data from the attributes
+			// frameTypeData, ok := attributes.Get(frametype.AttributesKey).(frametype.FrameTypeData)
+			// if ok {
+			// 	slog.Info("FecInterceptor", "frameTypeData", frameTypeData)
+			// }
 
 			// Send the media RTP packet
 			result, err := writer.Write(header, payload, attributes)
