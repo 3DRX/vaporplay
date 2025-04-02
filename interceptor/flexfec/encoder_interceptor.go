@@ -60,7 +60,7 @@ func NewFecInterceptor(opts ...FecOption) (*FecInterceptorFactory, error) {
 func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Interceptor, error) {
 	interceptor := &FecInterceptor{
 		packetBuffer:       make([]rtp.Packet, 0),
-		minNumMediaPackets: 3,
+		minNumMediaPackets: 5,
 
 		// 初始化动态 FEC 相关字段
 		protectionMethod:     NewVCMProtectionMethod(),
@@ -204,7 +204,7 @@ func (r *FecInterceptor) BindLocalStream(
 			// Send the FEC packets
 			var fecPackets []rtp.Packet
 			// for frame smaller than 5 packets, encode FEC with next frame
-			if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
+			if len(r.packetBuffer) >= int(r.minNumMediaPackets) {
 				// 计算应该生成多少个 FEC 包
 				numFECPackets := r.calculateNumFECPackets()
 				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, numFECPackets)
