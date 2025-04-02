@@ -14,6 +14,7 @@ import (
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/3DRX/piongs/interceptor/cc"
 	"github.com/3DRX/piongs/interceptor/flexfec"
+	"github.com/3DRX/piongs/interceptor/frametype"
 	"github.com/3DRX/piongs/interceptor/gcc"
 	"github.com/3DRX/piongs/interceptor/nack"
 	"github.com/3DRX/piongs/interceptor/twcc"
@@ -113,13 +114,18 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
+	frameTypeInterceptor, err := frametype.NewFrameTypeInterceptor()
+	if err != nil {
+		panic(err)
+	}
 	i.Add(senderReportInterceptor)
 	i.Add(congestionControllerFactory)
 	i.Add(twccInterceptor)
-	// FIXME: currently, enabling flexfec will cause problem in browser decoding the video.
-	// so we disable it for now.
+	// FIXME: currently, the flexfec implementation cause video content
+	// broken when fec payload are actually used when loss occurs.
 	i.Add(fecInterceptor)
 	i.Add(nackResponder)
+	i.Add(frameTypeInterceptor)
 	settingEngine := webrtc.SettingEngine{}
 	settingEngine.SetEphemeralUDPPortRange(cfg.EphemeralUDPPortMin, cfg.EphemeralUDPPortMax)
 	api := webrtc.NewAPI(
