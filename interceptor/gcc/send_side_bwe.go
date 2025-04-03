@@ -321,7 +321,7 @@ func (e *SendSideBWE) onDelayUpdate(delayStats DelayStats) {
 		e.pacer.SetTargetBitrate(e.latestBitrate)
 	}
 	e.updateCount++
-	if !bitrateChanged && e.updateCount >= 5 {
+	if !bitrateChanged && e.updateCount >= 60 {
 		e.updateCount = 0
 		bitrateChanged = true
 	}
