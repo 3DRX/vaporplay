@@ -9,8 +9,10 @@ type StatsType = {
   timestamp: number;
   bytesReceived: number;
   fecBytesReceived: number;
+  retransmittedBytesReceived: number;
   bitrate: number;
   fecBitrate: number;
+  rtxBitrate: number;
   nackCount: number;
   packetsReceived: number;
   frameRate: number;
@@ -29,6 +31,8 @@ type StatsType = {
   recvFps: number | undefined;
   decodeFps: number | undefined;
   dropFps: number | undefined;
+  keyFramesDecoded: number;
+  keyFramesDecodedPerSecond: number | undefined;
 };
 
 export default function Gameplay(props: {
@@ -83,8 +87,10 @@ export default function Gameplay(props: {
     timestamp: 0,
     bytesReceived: 0,
     fecBytesReceived: 0,
+    retransmittedBytesReceived: 0,
     bitrate: 0, // Mbps
     fecBitrate: 0, // Mbps
+    rtxBitrate: 0, // Mbps
     nackCount: 0,
     packetsReceived: 0,
     frameRate: 0,
@@ -103,6 +109,8 @@ export default function Gameplay(props: {
     recvFps: undefined,
     decodeFps: undefined,
     dropFps: undefined,
+    keyFramesDecoded: 0,
+    keyFramesDecodedPerSecond: 0,
   });
 
   // Stats collection interval
@@ -131,12 +139,19 @@ export default function Gameplay(props: {
             timestamp: stat.timestamp,
             bytesReceived: stat.bytesReceived,
             fecBytesReceived: stat.fecBytesReceived,
+            retransmittedBytesReceived: stat.retransmittedBytesReceived,
             bitrate:
               ((stat.bytesReceived - prev.bytesReceived) * 8) /
               1_000_000 /
               ((stat.timestamp - prev.timestamp) / 1000),
             fecBitrate:
               ((stat.fecBytesReceived - prev.fecBytesReceived) * 8) /
+              1_000_000 /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            rtxBitrate:
+              ((stat.retransmittedBytesReceived -
+                prev.retransmittedBytesReceived) *
+                8) /
               1_000_000 /
               ((stat.timestamp - prev.timestamp) / 1000),
             nackCount: stat.nackCount,
@@ -172,6 +187,10 @@ export default function Gameplay(props: {
               ((stat.timestamp - prev.timestamp) / 1000),
             dropFps:
               (stat.framesDropped - prev.dropFrames) /
+              ((stat.timestamp - prev.timestamp) / 1000),
+            keyFramesDecoded: stat.keyFramesDecoded,
+            keyFramesDecodedPerSecond:
+              (stat.keyFramesDecoded - prev.keyFramesDecoded) /
               ((stat.timestamp - prev.timestamp) / 1000),
           }));
         }
@@ -317,6 +336,14 @@ export default function Gameplay(props: {
               </span>
             </div>
             <div className="flex flex-col">
+              <span className="text-xs text-white/60">RTX</span>
+              <span>
+                {stats.rtxBitrate
+                  ? stats.rtxBitrate.toFixed(2) + " Mbps"
+                  : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
               <span className="text-xs text-white/60">RTT</span>
               <span>{stats.rtt ? stats.rtt.toFixed(0) + "ms" : "N/A"}</span>
             </div>
@@ -360,6 +387,16 @@ export default function Gameplay(props: {
               <span className="text-xs text-white/60">Drop</span>
               <span>
                 {stats.dropFps ? stats.dropFps.toFixed(0) + "fps" : "N/A"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/60">
+                Key Frame(s) Per Second
+              </span>
+              <span>
+                {stats.keyFramesDecodedPerSecond
+                  ? stats.keyFramesDecodedPerSecond.toFixed(2)
+                  : "0"}
               </span>
             </div>
           </div>

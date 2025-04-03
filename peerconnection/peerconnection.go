@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
 	"runtime/pprof"
@@ -53,6 +54,7 @@ type PeerConnectionThread struct {
 	estimatorChan     chan cc.BandwidthEstimator
 	cpuProfile        string
 	videoDriverLabel  string
+	sessionConfig     *config.SessionConfig
 }
 
 func NewPeerConnectionThread(
@@ -91,10 +93,10 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
-	fecInterceptor, err := flexfec.NewFecInterceptor()
-	if err != nil {
-		panic(err)
-	}
+	// fecInterceptor, err := flexfec.NewFecInterceptor()
+	// if err != nil {
+	// 	panic(err)
+	// }
 	if err := m.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
 	); err != nil {
@@ -123,7 +125,7 @@ func NewPeerConnectionThread(
 	i.Add(twccInterceptor)
 	// FIXME: currently, the flexfec implementation cause video content
 	// broken when fec payload are actually used when loss occurs.
-	i.Add(fecInterceptor)
+	// i.Add(fecInterceptor)
 	i.Add(nackResponder)
 	i.Add(frameTypeInterceptor)
 	settingEngine := webrtc.SettingEngine{}
@@ -196,6 +198,7 @@ func NewPeerConnectionThread(
 		estimatorChan:     estimatorChan,
 		cpuProfile:        cpuProfile,
 		videoDriverLabel:  videoDriverLabel,
+		sessionConfig:     sessionConfig,
 	}
 	return pc
 }
@@ -264,22 +267,34 @@ func (pc *PeerConnectionThread) Spin() {
 				}
 			}
 			estimator := <-pc.estimatorChan
+			currentVideoBitrate := pc.sessionConfig.CodecConfig.InitialBitrate
 			if bitrateController != nil {
 				estimator.OnTargetBitrateChange(func(bitrate int) {
 					nackBitrate := nack.GetNACKBitRate()
 					fecBitrate := flexfec.GetFECBitrate()
 					videoBitrate := bitrate - int(nackBitrate) - int(fecBitrate)
 					// TODO: minus audio bitrate here
-					bitrateController.SetBitRate(videoBitrate)
-					slog.Info(
-						"setting bitrate",
-						"bitrate",
-						bitrate,
-						"nack",
-						fmt.Sprintf("%.2f%%", (nackBitrate/float64(bitrate))*100),
-						"fec",
-						fmt.Sprintf("%.2f%%", (fecBitrate/float64(bitrate))*100),
-					)
+					// only call SetBitrate if bitrate change is large enough
+					if math.Abs(float64(currentVideoBitrate-bitrate)) >= float64(currentVideoBitrate)*0.15 {
+						bitrateController.SetBitRate(videoBitrate)
+						slog.Info(
+							"Setting Bitrate",
+							"currentVideoBitrate",
+							currentVideoBitrate,
+							"newBitrate",
+							bitrate,
+						)
+						currentVideoBitrate = bitrate
+					}
+					// slog.Info(
+					// 	"OnTargetBitrateChange",
+					// 	"bitrate",
+					// 	bitrate,
+					// 	"nack",
+					// 	fmt.Sprintf("%.2f%%", (nackBitrate/float64(bitrate))*100),
+					// 	"fec",
+					// 	fmt.Sprintf("%.2f%%", (fecBitrate/float64(bitrate))*100),
+					// )
 				})
 			} else {
 				slog.Warn("Current video encoder does not implement SetBitrate")
