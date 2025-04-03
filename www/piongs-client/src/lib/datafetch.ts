@@ -1,5 +1,6 @@
 import { gameInfos } from "./types";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function f(server: string, method: string, route: string, body?: any) {
   const req = await fetch(`${server}/${route}`, {
     method: method,
