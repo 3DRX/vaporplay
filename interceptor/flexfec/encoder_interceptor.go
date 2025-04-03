@@ -88,6 +88,12 @@ func (r *FecInterceptor) BindLocalStream(
 				Payload: payload,
 			})
 
+			// // An example of how to get the frame type data from the attributes
+			// frameTypeData, ok := attributes.Get(frametype.AttributesKey).(frametype.FrameTypeData)
+			// if ok {
+			// 	slog.Info("FecInterceptor", "frameTypeData", frameTypeData)
+			// }
+
 			// Send the media RTP packet
 			result, err := writer.Write(header, payload, attributes)
 
