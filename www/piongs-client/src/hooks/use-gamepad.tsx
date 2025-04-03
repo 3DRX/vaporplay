@@ -69,5 +69,5 @@ export default function useGamepad(props: {
       );
       cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [props]);
 }

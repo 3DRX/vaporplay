@@ -49,7 +49,7 @@ export default function Gameplay(props: {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useGamepad({
-    onGamepadStateChange: (gamepadState, _) => {
+    onGamepadStateChange: (gamepadState) => {
       if (
         dataChannelRef.current &&
         dataChannelRef.current.label === "controller"
@@ -119,6 +119,7 @@ export default function Gameplay(props: {
       if (!peerConnectionRef.current) return;
 
       const stats = await peerConnectionRef.current.getStats();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for (const [_, stat] of stats.entries()) {
         if (stat.type === "codec" && stat.mimeType.startsWith("video")) {
           setStats((prev) => ({
@@ -133,7 +134,6 @@ export default function Gameplay(props: {
           }));
         }
         if (stat.type === "inbound-rtp" && stat.kind === "video") {
-          console;
           setStats((prev) => ({
             ...prev,
             timestamp: stat.timestamp,
@@ -405,7 +405,9 @@ export default function Gameplay(props: {
             onClick={() => {
               mediaRecorderRef.current?.stop();
               peerConnectionRef.current?.close();
-              props.onExit && props.onExit();
+              if (props.onExit) {
+                props.onExit();
+              }
             }}
             className="h-5 text-white transition-colors hover:text-gray-300"
           >
