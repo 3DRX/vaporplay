@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
+	"path"
+	"strings"
 
 	"github.com/3DRX/piongs/config"
 	"github.com/3DRX/piongs/middleware"
@@ -52,10 +55,27 @@ func NewSignalingThread(
 	}
 }
 
+func frontendHandler(sub http.FileSystem) http.Handler {
+	fs := http.FileServer(sub)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			fs.ServeHTTP(w, r)
+			return
+		}
+		f, err := sub.Open(strings.TrimPrefix(path.Clean(r.URL.Path), "/"))
+		if err == nil {
+			defer f.Close()
+		}
+		if os.IsNotExist(err) {
+			r.URL.Path = "/"
+		}
+		fs.ServeHTTP(w, r)
+	})
+}
+
 func (s *SignalingThread) Spin() <-chan *config.SessionConfig {
-	fileServer := http.FileServer(s.webuiDir)
 	mux := http.NewServeMux()
-	mux.Handle("/", fileServer)
 	mux.Handle("GET /games", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jsonGames, err := json.Marshal(s.cfg.Games)
 		if err != nil {
@@ -74,13 +94,15 @@ func (s *SignalingThread) Spin() <-chan *config.SessionConfig {
 		}
 		conn, err := s.upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			panic(err)
+			slog.Error("failed to upgrade connection", "error", err)
+			return
 		}
 		slog.Info("new receiver connected")
 		s.conn = conn
 		go s.handleRecvMessages()
 		go s.handleSendMessages()
 	}))
+	mux.Handle("/", frontendHandler(s.webuiDir))
 
 	httpServer := &http.Server{
 		Addr: s.cfg.Addr,

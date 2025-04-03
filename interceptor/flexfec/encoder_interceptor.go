@@ -203,8 +203,7 @@ func (r *FecInterceptor) BindLocalStream(
 
 			// Send the FEC packets
 			var fecPackets []rtp.Packet
-			// for frame smaller than 5 packets, encode FEC with next frame
-			if header.Marker && len(r.packetBuffer) >= int(r.minNumMediaPackets) {
+			if len(r.packetBuffer) >= int(r.minNumMediaPackets) {
 				// 计算应该生成多少个 FEC 包
 				numFECPackets := r.calculateNumFECPackets()
 				fecPackets = r.flexFecEncoder.EncodeFec(r.packetBuffer, numFECPackets)

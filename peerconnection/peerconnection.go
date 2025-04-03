@@ -14,11 +14,13 @@ import (
 	"github.com/3DRX/piongs/gamecapture"
 	"github.com/3DRX/piongs/interceptor/cc"
 	"github.com/3DRX/piongs/interceptor/flexfec"
+	"github.com/3DRX/piongs/interceptor/frametype"
 	"github.com/3DRX/piongs/interceptor/gcc"
 	"github.com/3DRX/piongs/interceptor/nack"
 	"github.com/3DRX/piongs/interceptor/twcc"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/report"
 	"github.com/pion/sdp/v3"
 
 	"github.com/pion/mediadevices"
@@ -108,10 +110,22 @@ func NewPeerConnectionThread(
 	if err != nil {
 		panic(err)
 	}
+	senderReportInterceptor, err := report.NewSenderInterceptor()
+	if err != nil {
+		panic(err)
+	}
+	frameTypeInterceptor, err := frametype.NewFrameTypeInterceptor()
+	if err != nil {
+		panic(err)
+	}
+	i.Add(senderReportInterceptor)
 	i.Add(congestionControllerFactory)
 	i.Add(twccInterceptor)
+	// FIXME: currently, the flexfec implementation cause video content
+	// broken when fec payload are actually used when loss occurs.
 	i.Add(fecInterceptor)
 	i.Add(nackResponder)
+	i.Add(frameTypeInterceptor)
 	settingEngine := webrtc.SettingEngine{}
 	settingEngine.SetEphemeralUDPPortRange(cfg.EphemeralUDPPortMin, cfg.EphemeralUDPPortMax)
 	api := webrtc.NewAPI(
@@ -421,10 +435,10 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	err = m.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeFlexFEC,
+				MimeType:     webrtc.MimeTypeFlexFEC + "-03",
 				ClockRate:    9000,
 				Channels:     0,
-				SDPFmtpLine:  "repair-window=200000", // 200ms
+				SDPFmtpLine:  "repair-window=10000000",
 				RTCPFeedback: nil,
 			},
 			PayloadType: 118,
