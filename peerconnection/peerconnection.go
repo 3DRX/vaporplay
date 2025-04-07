@@ -175,11 +175,6 @@ func NewPeerConnectionThread(
 			panic(err)
 		}
 		slog.Info("add video track success", "encodings", t.Sender().GetParameters().Encodings)
-		encoding := t.Sender().GetParameters().Encodings[0]
-		nack.SetRtxSSRC(uint32(encoding.RTPCodingParameters.RTX.SSRC))
-		nack.SetRtxPayloadType(113)
-		flexfec.SetFecSSRC(uint32(encoding.RTPCodingParameters.FEC.SSRC))
-		flexfec.SetFecPayloadType(118)
 	}
 
 	gamepadControl, err := NewGamepadControl()
@@ -435,7 +430,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:     webrtc.MimeTypeRTX,
-				ClockRate:    9000,
+				ClockRate:    90000,
 				Channels:     0,
 				SDPFmtpLine:  "apt=112",
 				RTCPFeedback: nil,
@@ -451,7 +446,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:     webrtc.MimeTypeFlexFEC + "-03",
-				ClockRate:    9000,
+				ClockRate:    90000,
 				Channels:     0,
 				SDPFmtpLine:  "repair-window=10000000",
 				RTCPFeedback: nil,
