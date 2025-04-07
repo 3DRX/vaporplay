@@ -19,8 +19,6 @@ type FecInterceptor struct {
 	flexFecEncoder     FlexEncoder
 	packetBuffer       []rtp.Packet
 	minNumMediaPackets uint32
-	payloadType        uint8
-	ssrc               uint32
 
 	fecBytes  uint64
 	startTime time.Time
@@ -59,12 +57,6 @@ func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Intercepto
 func (r *FecInterceptor) BindLocalStream(
 	info *interceptor.StreamInfo, writer interceptor.RTPWriter,
 ) interceptor.RTPWriter {
-	if r.payloadType != 0 {
-		info.PayloadTypeForwardErrorCorrection = r.payloadType
-	}
-	if r.ssrc != 0 {
-		info.SSRCForwardErrorCorrection = r.ssrc
-	}
 	slog.Info(
 		"FecInterceptor BindLocalStream",
 		"ssrc",
@@ -151,26 +143,6 @@ func (r *FecInterceptor) GetFECBitRate() float64 {
 	r.startTime = now
 	r.mu.Unlock()
 	return bitrate
-}
-
-func (r *FecInterceptor) SetFecPayloadType(payloadType uint8) {
-	r.payloadType = payloadType
-}
-
-func (r *FecInterceptor) SetFecSSRC(ssrc uint32) {
-	r.ssrc = ssrc
-}
-
-func SetFecPayloadType(payloadType uint8) {
-	if instance != nil {
-		instance.SetFecPayloadType(payloadType)
-	}
-}
-
-func SetFecSSRC(ssrc uint32) {
-	if instance != nil {
-		instance.SetFecSSRC(ssrc)
-	}
 }
 
 func GetFECBitrate() float64 {
