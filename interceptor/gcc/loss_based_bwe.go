@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/3DRX/piongs/interceptor/cc"
+	"github.com/3DRX/vaporplay/interceptor/cc"
 	"github.com/pion/logging"
 )
 

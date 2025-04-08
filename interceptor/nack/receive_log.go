@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/3DRX/piongs/interceptor/rtpbuffer"
+	"github.com/3DRX/vaporplay/interceptor/rtpbuffer"
 )
 
 type receiveLog struct {

@@ -7,8 +7,8 @@ CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/lo
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
 
-piongs: tmp/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
-	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o piongs
+vaporplay: tmp/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
+	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o vaporplay
 
 gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
 	cd gamecapture && $(CC) -shared -o libwindowmatch.so -fPIC window_match.c $(FLAGS)
@@ -16,10 +16,10 @@ gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_mat
 gamecapture/libgamecapture.so: gamecapture/game_capture.c gamecapture/game_capture.h
 	cd gamecapture && $(CC) -shared -o libgamecapture.so -fPIC game_capture.c $(FLAGS)
 
-tmp/webui: www/piongs-client
-	cd www/piongs-client && npm run build
+tmp/webui: www/vaporplay-client
+	cd www/vaporplay-client && npm run build
 	rm -rf tmp/webui
-	cp -r www/piongs-client/dist tmp/webui
+	cp -r www/vaporplay-client/dist tmp/webui
 
 install-ffmpeg:
 	rm -rf $(srcPath)
@@ -31,7 +31,7 @@ install-ffmpeg:
 	cd $(srcPath) && make install
 
 clean:
-	rm -f gamecapture/*.so piongs
+	rm -f gamecapture/*.so vaporplay
 	go clean -cache
 
-.PHONY: clean piongs install-ffmpeg
+.PHONY: clean vaporplay install-ffmpeg

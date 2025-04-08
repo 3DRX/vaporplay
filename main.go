@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/3DRX/piongs/config"
-	"github.com/3DRX/piongs/peerconnection"
-	"github.com/3DRX/piongs/signaling"
+	"github.com/3DRX/vaporplay/config"
+	"github.com/3DRX/vaporplay/peerconnection"
+	"github.com/3DRX/vaporplay/signaling"
 	"github.com/pion/webrtc/v4"
 )
 

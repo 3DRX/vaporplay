@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/3DRX/piongs/interceptor/frametype"
+	"github.com/3DRX/vaporplay/interceptor/frametype"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtp"
 )

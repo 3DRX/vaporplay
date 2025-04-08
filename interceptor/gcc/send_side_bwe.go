@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/3DRX/piongs/interceptor/cc"
-	"github.com/3DRX/piongs/interceptor/ntp"
+	"github.com/3DRX/vaporplay/interceptor/cc"
+	"github.com/3DRX/vaporplay/interceptor/ntp"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"

@@ -6,7 +6,7 @@ package gcc
 import (
 	"time"
 
-	"github.com/3DRX/piongs/interceptor/cc"
+	"github.com/3DRX/vaporplay/interceptor/cc"
 )
 
 type arrivalGroupAccumulator struct {

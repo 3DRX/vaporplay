@@ -1,7 +1,7 @@
 
-![piongs](./README.assets/piongs.png)
+![vaporplay](./README.assets/vaporplay.png)
 
-# piongs
+# VaporPlay
 
 Cloud-game server & client based on Linux and pion webrtc.
 
@@ -9,7 +9,7 @@ Cloud-game server & client based on Linux and pion webrtc.
 
 ## Environment & Limitations
 
-The server can only be compiled & run on Linux using X11 and have steam installed, the client runs anywhere at https://piongs-client.3drx.top.
+The server can only be compiled & run on Linux using X11 and have steam installed, the client runs in browser.
 Currently, only transportation of game video and controller inputs is implemented.
 Due to the proof of concept & test bed nature of this project, other types of payload is not planned for now.
 The control input transportation and processing is tested on Xbox Wireless Controller.
@@ -35,25 +35,25 @@ Here is an explanation of what each entry in a game config means:
 
 0. Install dependencies, and build FFmpeg from source by `install-ffmpeg`.
 1. To compile server, run `make`.
-2. To start server, run `./piongs -config=config.json`. For profiling, run `./piongs -config=config.json -cpuprofile=piongs.prof`
-and after server exits, run `go tool pprof piongs piongs.prof`, and type `web` to see the profile.
-3. After server started, go to https://piongs-client.3drx.top and fill in the correct server url.
-![piongs-client](./README.assets/piongs-client2.png)
-Or for local testing, run `npm run preview -- --host --port 8888` under www/piongs-client ,then go to http://localhost:8080.
+2. To start server, run `./vaporplay -config=config.json`. For profiling, run `./vaporplay -config=config.json -cpuprofile=vaporplay.prof`
+and after server exits, run `go tool pprof vaporplay vaporplay.prof`, and type `web` to see the profile.
+3. After server started, go to https://vaporplay-client.3drx.top and fill in the correct server url.
+![vaporplay-client](./README.assets/vaporplay-client2.png)
+Or for local testing, run `npm run preview -- --host --port 8888` under www/vaporplay-client ,then go to http://localhost:8080.
 
 > local testing is not recommended, since it's not secure. You need to add the following flags in chrome://flags.
 
-![piongs-client](./README.assets/flags.png)
+![vaporplay-client](./README.assets/flags.png)
 
 4. Click next, choose a game, and start!
-![piongs-client](./README.assets/piongs-client.png)
+![vaporplay-client](./README.assets/vaporplay-client.png)
 
 ### Testing Input Device
 
-piongs-client includes a controller testing tool, at https://piongs-client.3drx.top/gamepad-test.
-![piongs-client](./README.assets/gamepad-test.png)
-It also includes the detection of codec capabilities.at https://piongs-client.3drx.top/gamepad-test
-![piongs-client](./README.assets/codec-test.png)
+vaporplay-client includes a controller testing tool, at https://vaporplay-client.3drx.top/gamepad-test.
+![vaporplay-client](./README.assets/gamepad-test.png)
+It also includes the detection of codec capabilities.at https://vaporplay-client.3drx.top/gamepad-test
+![vaporplay-client](./README.assets/codec-test.png)
 > During development, only Xbox Wireless Controller is tested.
 
 ## Acknowledgements

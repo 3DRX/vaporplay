@@ -3,7 +3,7 @@
 
 package nack
 
-import "github.com/3DRX/piongs/interceptor/rtpbuffer"
+import "github.com/3DRX/vaporplay/interceptor/rtpbuffer"
 
 // ErrInvalidSize is returned by newReceiveLog/newRTPBuffer, when an incorrect buffer size is supplied.
 var ErrInvalidSize = rtpbuffer.ErrInvalidSize
