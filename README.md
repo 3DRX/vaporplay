@@ -46,7 +46,7 @@ and after server exits, run `go tool pprof vaporplay vaporplay.prof`, and type `
 vaporplay-client includes a controller testing tool at https://vaporplay-client.3drx.top/gamepad-test.
 ![vaporplay-client](./README.assets/gamepad-test.png)
 
-It also includes the detection of codec capabilities at https://vaporplay-client.3drx.top/gamepad-test.
+It also includes the detection of codec capabilities at https://vaporplay-client.3drx.top/codec-capabilities.
 ![vaporplay-client](./README.assets/codec-test.png)
 
 > During development, only Xbox Wireless Controller is tested.
