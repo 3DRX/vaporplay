@@ -9,8 +9,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/3DRX/piongs/config"
-	"github.com/3DRX/piongs/middleware"
+	"github.com/3DRX/vaporplay/config"
+	"github.com/3DRX/vaporplay/middleware"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
 )

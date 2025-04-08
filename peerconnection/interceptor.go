@@ -1,7 +1,7 @@
 package peerconnection
 
 import (
-	"github.com/3DRX/piongs/interceptor/rfc8888"
+	"github.com/3DRX/vaporplay/interceptor/rfc8888"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 )

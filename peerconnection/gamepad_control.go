@@ -1,6 +1,6 @@
 package peerconnection
 
-import "github.com/3DRX/piongs/uinput"
+import "github.com/3DRX/vaporplay/uinput"
 
 type GamepadControl struct {
 	Gamepad uinput.Gamepad
@@ -12,7 +12,7 @@ type GamepadDTO struct {
 }
 
 func NewGamepadControl() (*GamepadControl, error) {
-	gamepad, err := uinput.CreateGamepad("/dev/uinput", []byte("Piongs Virtual Controller"), 0x9999, 0x999)
+	gamepad, err := uinput.CreateGamepad("/dev/uinput", []byte("Vaporplay Virtual Controller"), 0x9999, 0x999)
 	if err != nil {
 		return nil, err
 	}

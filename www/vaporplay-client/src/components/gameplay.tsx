@@ -320,7 +320,7 @@ export default function Gameplay(props: {
       {showTopBar && (
         <div className="absolute left-0 right-0 top-0 z-50 flex touch-none items-center justify-between bg-black/50 px-4 backdrop-blur-sm">
           <h1 className="hidden text-lg font-bold text-white sm:block">
-            PionGS Gameplay
+            VaporPlay
           </h1>
           <div className="flex flex-wrap space-x-4 text-sm text-white/80">
             <div className="flex flex-col">

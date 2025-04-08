@@ -1,4 +1,4 @@
-module github.com/3DRX/piongs
+module github.com/3DRX/vaporplay
 
 go 1.23.4
 

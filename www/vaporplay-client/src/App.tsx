@@ -15,9 +15,9 @@ import { Link } from "react-router";
 
 export default function App() {
   const [startGame, setStartGame] = useState(false);
-  const [server, setServer] = useLocalStorage("piongs-client-server", "");
+  const [server, setServer] = useLocalStorage("vaporplay-client-server", "");
   const [codec, setCodec] = useLocalStorage<CodecInfoType>(
-    "piongs-client-codec",
+    "vaporplay-client-codec",
     {
       codec: "h264_nvenc",
       initial_bitrate: 5_000_000,
@@ -26,7 +26,7 @@ export default function App() {
     },
   );
   const [game, setGame] = useState<GameInfoType | null>(null);
-  const [record, setRecord] = useLocalStorage("piongs-client-record", false);
+  const [record, setRecord] = useLocalStorage("vaporplay-client-record", false);
 
   function onSubmit(values: FormType) {
     if (values.server) {

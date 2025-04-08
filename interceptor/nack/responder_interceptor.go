@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/3DRX/piongs/interceptor/rtpbuffer"
+	"github.com/3DRX/vaporplay/interceptor/rtpbuffer"
 	"github.com/pion/interceptor"
 	"github.com/pion/logging"
 	"github.com/pion/rtcp"

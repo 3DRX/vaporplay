@@ -7,7 +7,7 @@ package twcc
 import (
 	"math"
 
-	"github.com/3DRX/piongs/interceptor/sequencenumber"
+	"github.com/3DRX/vaporplay/interceptor/sequencenumber"
 	"github.com/pion/rtcp"
 )
 

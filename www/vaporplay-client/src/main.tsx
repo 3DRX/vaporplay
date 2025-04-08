@@ -12,7 +12,7 @@ const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme-piongs">
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme-vaporplay">
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>

@@ -1,6 +1,6 @@
 *.so
 *.o
-piongs
+vaporplay
 tmp/
 *.csv
 config-local.json

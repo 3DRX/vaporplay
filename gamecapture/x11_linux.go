@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/3DRX/piongs/config"
+	"github.com/3DRX/vaporplay/config"
 	"github.com/pion/mediadevices/pkg/driver"
 	"github.com/pion/mediadevices/pkg/frame"
 	"github.com/pion/mediadevices/pkg/io/video"
