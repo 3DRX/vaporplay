@@ -445,7 +445,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	err = m.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeFlexFEC + "-03",
+				MimeType:     webrtc.MimeTypeFlexFEC03,
 				ClockRate:    90000,
 				Channels:     0,
 				SDPFmtpLine:  "repair-window=10000000",
