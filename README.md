@@ -39,9 +39,7 @@ Here is an explanation of what each entry in a game config means:
 2. To start server, run `./vaporplay -config=config.json`. For profiling, run `./vaporplay -config=config.json -cpuprofile=vaporplay.prof`
 and after server exits, run `go tool pprof vaporplay vaporplay.prof`, and type `web` to see the profile.
 3. After server started, go to the address in configuration file (default to `http://0.0.0.0:8080`).
-![vaporplay-client](./README.assets/vaporplay-client2.png)
 4. Click next, choose a game, and start!
-![vaporplay-client](./README.assets/vaporplay-client.png)
 
 ### Testing Input Device
 
