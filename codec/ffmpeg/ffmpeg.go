@@ -352,6 +352,8 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 
 	err = softwareFrame.AllocBuffer(0)
 	if err != nil {
+		softwareFrame.Free()
+		codecCtx.Free()
 		return nil, fmt.Errorf("failed to allocate sorfware buffer: %w", err)
 	}
 
@@ -359,6 +361,9 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 
 	err = hardwareFrame.AllocHardwareBuffer(hwFramesCtx)
 	if err != nil {
+		softwareFrame.Free()
+		hardwareFrame.Free()
+		codecCtx.Free()
 		return nil, fmt.Errorf("failed to allocate hardware buffer: %w", err)
 	}
 
@@ -534,6 +539,8 @@ func newSoftwareEncoder(r video.Reader, p prop.Media, params Params) (*softwareE
 
 	err := softwareFrame.AllocBuffer(0)
 	if err != nil {
+		softwareFrame.Free()
+		codecCtx.Free()
 		return nil, fmt.Errorf("failed to allocate sorfware buffer: %w", err)
 	}
 
