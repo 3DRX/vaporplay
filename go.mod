@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/interceptor v0.1.37
 	github.com/pion/logging v0.2.3
-	github.com/pion/mediadevices v0.7.2-0.20250406170714-7211d077ee70
+	github.com/pion/mediadevices v0.7.2-0.20250411040501-20e8c5073579
 	github.com/pion/rtcp v1.2.15
 	github.com/pion/rtp v1.8.13
 	github.com/pion/sdp/v3 v3.0.11
