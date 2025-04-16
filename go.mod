@@ -11,7 +11,7 @@ require (
 	github.com/pion/rtcp v1.2.15
 	github.com/pion/rtp v1.8.13
 	github.com/pion/sdp/v3 v3.0.11
-	github.com/pion/webrtc/v4 v4.0.15-0.20250407122951-334692b1224f
+	github.com/pion/webrtc/v4 v4.0.15
 )
 
 require (
@@ -19,10 +19,10 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v3 v3.0.6 // indirect
-	github.com/pion/ice/v4 v4.0.9 // indirect
+	github.com/pion/ice/v4 v4.0.10 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/sctp v1.8.37 // indirect
+	github.com/pion/sctp v1.8.38 // indirect
 	github.com/pion/srtp/v3 v3.0.4 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
