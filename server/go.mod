@@ -1,14 +1,16 @@
-module github.com/3DRX/vaporplay
+module github.com/3DRX/vaporplay/server
 
 go 1.23.4
 
+replace github.com/3DRX/vaporplay => ../
+
 require (
-	github.com/asticode/go-astiav v0.33.1
+	github.com/3DRX/vaporplay v0.0.0-00010101000000-000000000000
+	github.com/asticode/go-astiav v0.35.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/pion/interceptor v0.1.37
-	github.com/pion/logging v0.2.3
 	github.com/pion/mediadevices v0.7.2-0.20250411040501-20e8c5073579
-	github.com/pion/rtcp v1.2.15
-	github.com/pion/rtp v1.8.13
+	github.com/pion/sdp/v3 v3.0.11
 	github.com/pion/webrtc/v4 v4.0.15
 )
 
@@ -18,10 +20,12 @@ require (
 	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v3 v3.0.6 // indirect
 	github.com/pion/ice/v4 v4.0.10 // indirect
+	github.com/pion/logging v0.2.3 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/rtcp v1.2.15 // indirect
+	github.com/pion/rtp v1.8.13 // indirect
 	github.com/pion/sctp v1.8.38 // indirect
-	github.com/pion/sdp/v3 v3.0.11 // indirect
 	github.com/pion/srtp/v3 v3.0.4 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect

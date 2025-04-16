@@ -8,12 +8,12 @@ import (
 	"net/http"
 
 	"github.com/3DRX/vaporplay/config"
-	"github.com/3DRX/vaporplay/peerconnection"
-	"github.com/3DRX/vaporplay/signaling"
+	"github.com/3DRX/vaporplay/server/peerconnection"
+	"github.com/3DRX/vaporplay/server/signaling"
 	"github.com/pion/webrtc/v4"
 )
 
-//go:embed tmp/webui/*
+//go:embed webui/*
 var embedFS embed.FS
 
 var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -30,7 +30,7 @@ func main() {
 	sendCandidateChan := make(chan webrtc.ICECandidateInit)
 	recvCandidateChan := make(chan webrtc.ICECandidateInit)
 
-	subFS, err := fs.Sub(embedFS, "tmp/webui")
+	subFS, err := fs.Sub(embedFS, "webui")
 	if err != nil {
 		panic(err)
 	}
