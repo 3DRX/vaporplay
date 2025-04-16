@@ -1,19 +1,21 @@
+// Package ffmpeg brings libavcodec's encoding capabilities to mediadevices.
+// This package requires ffmpeg headers and libraries to be built.
+// For more information, see https://github.com/asticode/go-astiav?tab=readme-ov-file#install-ffmpeg-from-source.
+//
+// Currently, only nvenc, x264, vaapi are implemented, but extending this to other ffmpeg supported codecs should
+// be simple.
 package ffmpeg
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
-	"os"
 	"sync"
 
 	"github.com/asticode/go-astiav"
 	"github.com/pion/mediadevices/pkg/codec"
 	"github.com/pion/mediadevices/pkg/io/video"
 	"github.com/pion/mediadevices/pkg/prop"
-	"github.com/pion/webrtc/v4"
 )
 
 type hardwareEncoder struct {
@@ -27,9 +29,6 @@ type hardwareEncoder struct {
 	height         int
 	r              video.Reader
 	nextIsKeyFrame bool
-
-	// for stats
-	statsItemChan chan StatsItem
 
 	mu     sync.Mutex
 	closed bool
@@ -49,203 +48,17 @@ type softwareEncoder struct {
 	closed bool
 }
 
-type VP8Params struct {
-	Params
-}
-
-func NewVP8VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (VP8Params, error) {
-	return VP8Params{
-		Params: Params{
-			codecName:      "vp8_vaapi",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-func (p *VP8Params) RTPCodec() *codec.RTPCodec {
-	defaultH264Codec := codec.NewRTPVP8Codec(90000)
-	return defaultH264Codec
-}
-
-func (p *VP8Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newHardwareEncoder(r, property, p.Params)
-	if err != nil {
-		slog.Error("failed to create new encoder", "error", err)
-		return nil, err
-	}
-	slog.Info("sucsessfully created new encoder")
-	return readCloser, nil
-}
-
-type H264Params struct {
-	Params
-}
-
-func NewH264NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H264Params, error) {
-	return H264Params{
-		Params: Params{
-			codecName:      "h264_nvenc",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-func NewH264VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H264Params, error) {
-	return H264Params{
-		Params: Params{
-			codecName:      "h264_vaapi",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-// RTPCodec represents the codec metadata
-func (p *H264Params) RTPCodec() *codec.RTPCodec {
-	defaultH264Codec := codec.NewRTPH264Codec(90000)
-	defaultH264Codec.PayloadType = 112
-	defaultH264Codec.RTCPFeedback = []webrtc.RTCPFeedback{
-		{Type: "nack", Parameter: ""},
-		{Type: "nack", Parameter: "pli"},
-	}
-	return defaultH264Codec
-}
-
-func (p *H264Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newHardwareEncoder(r, property, p.Params)
-	if err != nil {
-		slog.Error("failed to create new encoder", "error", err)
-		return nil, err
-	}
-	slog.Info("sucsessfully created new encoder")
-	return readCloser, nil
-}
-
-type H264SoftwareParams struct {
-	Params
-}
-
-func NewH264X264Params() (H264SoftwareParams, error) {
-	return H264SoftwareParams{
-		Params: Params{
-			codecName: "libx264",
-		},
-	}, nil
-}
-
-func (p *H264SoftwareParams) RTPCodec() *codec.RTPCodec {
-	defaultH264Codec := codec.NewRTPH264Codec(90000)
-	defaultH264Codec.PayloadType = 112
-	defaultH264Codec.RTCPFeedback = []webrtc.RTCPFeedback{
-		{Type: "nack", Parameter: ""},
-		{Type: "nack", Parameter: "pli"},
-	}
-	return defaultH264Codec
-}
-
-func (p *H264SoftwareParams) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newSoftwareEncoder(r, property, p.Params)
-	if err != nil {
-		slog.Error("failed to create new encoder", "error", err)
-		return nil, err
-	}
-	slog.Info("sucsessfully created new encoder")
-	return readCloser, nil
-}
-
-type H265Params struct {
-	Params
-}
-
-func NewH265NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H265Params, error) {
-	return H265Params{
-		Params: Params{
-			codecName:      "hevc_nvenc",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-func NewH265VAAPIParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (H265Params, error) {
-	return H265Params{
-		Params: Params{
-			codecName:      "hevc_vaapi",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-func (p *H265Params) RTPCodec() *codec.RTPCodec {
-	defaultH265Codec := codec.NewRTPH265Codec(90000)
-	defaultH265Codec.PayloadType = 112
-	defaultH265Codec.RTCPFeedback = []webrtc.RTCPFeedback{
-		{Type: "nack", Parameter: ""},
-		{Type: "nack", Parameter: "pli"},
-	}
-	return defaultH265Codec
-}
-
-func (p *H265Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newHardwareEncoder(r, property, p.Params)
-	if err != nil {
-		slog.Error("failed to create new encoder", "error", err)
-		return nil, err
-	}
-	slog.Info("sucsessfully created new encoder")
-	return readCloser, nil
-}
-
-type AV1Params struct {
-	Params
-}
-
-func NewAV1NVENCParams(hardwareDevice string, pixelFormat astiav.PixelFormat) (AV1Params, error) {
-	return AV1Params{
-		Params: Params{
-			codecName:      "av1_nvenc",
-			hardwareDevice: hardwareDevice,
-			pixelFormat:    pixelFormat,
-		},
-	}, nil
-}
-
-func (p *AV1Params) RTPCodec() *codec.RTPCodec {
-	defaultAV1Codec := codec.NewRTPAV1Codec(90000)
-	defaultAV1Codec.PayloadType = 112
-	defaultAV1Codec.RTCPFeedback = []webrtc.RTCPFeedback{
-		{Type: "nack", Parameter: ""},
-		{Type: "nack", Parameter: "pli"},
-	}
-	return defaultAV1Codec
-}
-
-func (p *AV1Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	readCloser, err := newHardwareEncoder(r, property, p.Params)
-	if err != nil {
-		slog.Error("failed to create new encoder", "error", err)
-		return nil, err
-	}
-	slog.Info("sucsessfully created new encoder")
-	return readCloser, nil
-}
-
 func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareEncoder, error) {
 	if p.FrameRate == 0 {
-		slog.Warn(fmt.Sprintf("frame rate is 0, setting to %f", params.FrameRate))
 		p.FrameRate = params.FrameRate
 	}
-	slog.Info("creating new encoder", "params", params, "props", p)
 	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
 	var hardwareDeviceType astiav.HardwareDeviceType
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		hardwareDeviceType = astiav.HardwareDeviceType(astiav.HardwareDeviceTypeCUDA)
-	case "vp8_vaapi", "h264_vaapi", "hevc_vaapi":
+	case "vp8_vaapi", "vp9_vaapi", "h264_vaapi", "hevc_vaapi":
 		hardwareDeviceType = astiav.HardwareDeviceType(astiav.HardwareDeviceTypeVAAPI)
 	}
 
@@ -280,7 +93,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
-	case "vp8_vaapi", "h264_vaapi", "hevc_vaapi":
+	case "vp8_vaapi", "vp9_vaapi", "h264_vaapi", "hevc_vaapi":
 		codecCtx.SetPixelFormat(astiav.PixelFormat(astiav.PixelFormatVaapi))
 	}
 	codecOptions := codecCtx.PrivateData().Options()
@@ -306,14 +119,15 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 		codecOptions.Set("tune", "ll", 0)
 		codecOptions.Set("preset", "p1", 0)
 		codecOptions.Set("rc", "cbr", 0)
-	case "vp8_vaapi", "h264_vaapi", "hevc_vaapi":
+	case "vp8_vaapi", "vp9_vaapi", "h264_vaapi", "hevc_vaapi":
 		codecOptions.Set("rc_mode", "CBR", 0)
 	}
 
 	// Create hardware frames context
 	hwFramesCtx := astiav.AllocHardwareFramesContext(hwDevice)
+	hwDevice.Free()
 	if hwFramesCtx == nil {
-		hwDevice.Free()
+		codecCtx.Free()
 		return nil, fmt.Errorf("failed to allocate hw frames context")
 	}
 
@@ -323,13 +137,15 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	switch params.codecName {
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatCuda))
-	case "vp8_vaapi", "h264_vaapi", "hevc_vaapi":
+	case "vp8_vaapi", "vp9_vaapi", "h264_vaapi", "hevc_vaapi":
 		hwFramesCtx.SetHardwarePixelFormat(astiav.PixelFormat(astiav.PixelFormatVaapi))
 	}
 	hwFramesCtx.SetSoftwarePixelFormat(params.pixelFormat)
 
 	err = hwFramesCtx.Initialize()
 	if err != nil {
+		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to initialize hw frames context: %w", err)
 	}
 	codecCtx.SetHardwareFramesContext(hwFramesCtx)
@@ -337,12 +153,14 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	// Open codec context
 	if err := codecCtx.Open(codec, nil); err != nil {
 		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to open codec context: %w", err)
 	}
 
 	softwareFrame := astiav.AllocFrame()
 	if softwareFrame == nil {
 		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to allocate frame")
 	}
 
@@ -354,6 +172,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	if err != nil {
 		softwareFrame.Free()
 		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to allocate sorfware buffer: %w", err)
 	}
 
@@ -363,19 +182,21 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	if err != nil {
 		softwareFrame.Free()
 		hardwareFrame.Free()
+		softwareFrame.Free()
 		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to allocate hardware buffer: %w", err)
 	}
 
 	packet := astiav.AllocPacket()
 	if packet == nil {
 		softwareFrame.Free()
+		hardwareFrame.Free()
+		softwareFrame.Free()
 		codecCtx.Free()
+		hwFramesCtx.Free()
 		return nil, fmt.Errorf("failed to allocate packet")
 	}
-
-	statsItemChan := make(chan StatsItem, 100)
-	// go StatsThread(statsItemChan)
 
 	return &hardwareEncoder{
 		codec:          codec,
@@ -388,7 +209,6 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 		height:         p.Height,
 		r:              r,
 		nextIsKeyFrame: false,
-		statsItemChan:  statsItemChan,
 	}, nil
 }
 
@@ -444,9 +264,6 @@ func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 		break
 	}
 
-	// e.statsItemChan <- StatsItem{
-	// 	FrameSize: e.packet.Size(),
-	// }
 	data := make([]byte, e.packet.Size())
 	copy(data, e.packet.Data())
 	e.packet.Unref()
@@ -458,7 +275,6 @@ func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 func (e *hardwareEncoder) ForceKeyFrame() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	slog.Info("forcing key frame")
 	e.nextIsKeyFrame = true
 	return nil
 }
@@ -483,18 +299,16 @@ func (e *hardwareEncoder) Close() error {
 	if e.codecCtx != nil {
 		e.codecCtx.Free()
 	}
-	if e.statsItemChan != nil {
-		close(e.statsItemChan)
+	if e.hwFramesCtx != nil {
+		e.hwFramesCtx.Free()
 	}
 	return nil
 }
 
 func newSoftwareEncoder(r video.Reader, p prop.Media, params Params) (*softwareEncoder, error) {
 	if p.FrameRate == 0 {
-		slog.Warn(fmt.Sprintf("frame rate is 0, setting to %f", params.FrameRate))
 		p.FrameRate = params.FrameRate
 	}
-	slog.Info("creating new encoder", "params", params, "props", p)
 	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
 	codec := astiav.FindEncoderByName(params.codecName)
@@ -609,7 +423,6 @@ func (e *softwareEncoder) Controller() codec.EncoderController {
 func (e *softwareEncoder) ForceKeyFrame() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	slog.Info("forcing key frame")
 	e.nextIsKeyFrame = true
 	return nil
 }
@@ -632,40 +445,4 @@ func (e *softwareEncoder) Close() error {
 		e.codecCtx.Free()
 	}
 	return nil
-}
-
-type StatsItem struct {
-	FrameSize int
-}
-
-func StatsThread(frameSizeChan chan StatsItem) {
-	// open file for writing
-	f, err := os.Create("frame_size.csv")
-	if err != nil {
-		panic(err)
-	}
-	w := bufio.NewWriter(f)
-	w.WriteString("frame_size\n")
-	defer f.Close()
-	index := 0
-	var statsItem StatsItem
-	for {
-		select {
-		case statsItem = <-frameSizeChan:
-			if statsItem.FrameSize == 0 {
-				// there will be mutiple 0s when the stream is stopped,
-				// it's safe to just ignore them
-				continue
-			}
-			// slog.Info("frame size", "size", frameSize)
-			_, err := w.WriteString(fmt.Sprintf("%d\n", statsItem.FrameSize))
-			if err != nil {
-				slog.Error("failed to write frame size to file", "error", err)
-			}
-			if index%270 == 0 {
-				w.Flush()
-			}
-			index++
-		}
-	}
 }
