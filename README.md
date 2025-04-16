@@ -34,12 +34,16 @@ Here is an explanation of what each entry in a game config means:
 
 ## Usage
 
-0. Install dependencies, and build FFmpeg from source by `make install-ffmpeg`.
-1. To compile server, run `make`.
+0. Install dependencies.
+1. Run `make` to build, first time running this will also fetch FFmpeg source code and build it.
 2. To start server, run `./vaporplay -config=config.json`. For profiling, run `./vaporplay -config=config.json -cpuprofile=vaporplay.prof`
 and after server exits, run `go tool pprof vaporplay vaporplay.prof`, and type `web` to see the profile.
 3. After server started, go to the address in configuration file (default to `http://0.0.0.0:8080`).
 4. Click next, choose a game, and start!
+
+Other commands
+- `make clean` Clean build cache.
+- `make clean-deps` Remove installed && build artifacts (will result in next `make` to take longer).
 
 ### Testing Input Device
 
