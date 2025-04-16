@@ -34,7 +34,10 @@ $(srcPath):
 clean:
 	rm -f gamecapture/*.so vaporplay vaporplay-native-client
 	rm -rf ./server/webui/
-	rm -rf $(srcPath)
 	go clean -cache
 
-.PHONY: clean vaporplay
+clean-deps: clean
+	rm -rf ./client/vaporplay-web-client/node_modules/
+	rm -rf $(srcPath)
+
+.PHONY: clean clean-deps vaporplay
