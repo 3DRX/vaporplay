@@ -7,8 +7,9 @@ CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/lo
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
 
-vaporplay: tmp/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so
-	PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o vaporplay
+vaporplay: server/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so $(srcPath)
+	cd ./server && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o ../vaporplay
+	cd ./client/vaporplay-native-client && go build -ldflags "-s -w" -o ../../vaporplay-native-client
 
 gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
 	cd gamecapture && $(CC) -shared -o libwindowmatch.so -fPIC window_match.c $(FLAGS)
@@ -16,22 +17,23 @@ gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_mat
 gamecapture/libgamecapture.so: gamecapture/game_capture.c gamecapture/game_capture.h
 	cd gamecapture && $(CC) -shared -o libgamecapture.so -fPIC game_capture.c $(FLAGS)
 
-tmp/webui: www/vaporplay-client
-	cd www/vaporplay-client && npm run build
-	rm -rf tmp/webui
-	cp -r www/vaporplay-client/dist tmp/webui
+server/webui: client/vaporplay-web-client
+	cd client/vaporplay-web-client && npm run build
+	rm -rf server/webui
+	cp -r client/vaporplay-web-client/dist server/webui
 
-install-ffmpeg:
+$(srcPath):
 	rm -rf $(srcPath)
 	mkdir -p $(srcPath)
-	cd $(srcPath) && git clone https://github.com/FFmpeg/FFmpeg .
-	cd $(srcPath) && git checkout $(version)
+	cd $(srcPath) && git clone --branch $(version) https://github.com/FFmpeg/FFmpeg .
 	cd $(srcPath) && ./configure --prefix=.. $(configure)
 	cd $(srcPath) && make -j8
 	cd $(srcPath) && make install
 
 clean:
-	rm -f gamecapture/*.so vaporplay
+	rm -f gamecapture/*.so vaporplay vaporplay-native-client
+	rm -rf ./server/webui/
+	rm -rf $(srcPath)
 	go clean -cache
 
-.PHONY: clean vaporplay install-ffmpeg
+.PHONY: clean vaporplay
