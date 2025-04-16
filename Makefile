@@ -8,6 +8,7 @@ PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
 
 vaporplay: server/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so $(srcPath)
+	go mod tidy && cd server && go mod tidy
 	cd ./server && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o ../vaporplay
 	cd ./client/vaporplay-native-client && go build -ldflags "-s -w" -o ../../vaporplay-native-client
 
@@ -18,7 +19,7 @@ gamecapture/libgamecapture.so: gamecapture/game_capture.c gamecapture/game_captu
 	cd gamecapture && $(CC) -shared -o libgamecapture.so -fPIC game_capture.c $(FLAGS)
 
 server/webui: client/vaporplay-web-client
-	cd client/vaporplay-web-client && npm run build
+	cd client/vaporplay-web-client && npm i && npm run build
 	rm -rf server/webui
 	cp -r client/vaporplay-web-client/dist server/webui
 
