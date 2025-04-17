@@ -6,7 +6,7 @@ patchPath=$(CURDIR)/patches/ffmpeg/$(version)
 CGO_CFLAGS := -I$(CURDIR)/gamecapture -I$(CURDIR)/tmp/$(version)/include/ -I/usr/local/cuda/include
 CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/local/cuda/lib64
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
-configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
+configure := --enable-libx264 --enable-libx265 --enable-decoder=hevc --enable-gpl --enable-nonfree --enable-nvenc
 
 vaporplay: server/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so $(srcPath)
 	go mod tidy && cd server && go mod tidy

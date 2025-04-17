@@ -5,6 +5,7 @@ import (
 	"image"
 	"log/slog"
 
+	"github.com/3DRX/vaporplay/config"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -14,6 +15,7 @@ import (
 type VideoDecoder struct {
 	sampleBuilder *samplebuilder.SampleBuilder
 
+	codec        string
 	codecCreated bool
 
 	pkt         *astiav.Packet
@@ -22,10 +24,30 @@ type VideoDecoder struct {
 	decCodecCtx *astiav.CodecContext
 }
 
-func newVideoDecoder() *VideoDecoder {
-	return &VideoDecoder{
-		sampleBuilder: samplebuilder.New(200, &codecs.H264Packet{}, 90000),
-		codecCreated:  false,
+func newVideoDecoder(codecConfig config.CodecConfig) *VideoDecoder {
+	maxLate := uint16(200)
+	sampleRate := uint32(90000)
+	switch codecConfig.Codec {
+	case "av1_nvenc":
+		return &VideoDecoder{
+			sampleBuilder: samplebuilder.New(maxLate, &codecs.AV1Depacketizer{}, sampleRate),
+			codecCreated:  false,
+			codec:         codecConfig.Codec,
+		}
+	case "hevc_nvenc":
+		return &VideoDecoder{
+			sampleBuilder: samplebuilder.New(maxLate, &codecs.H265Packet{}, sampleRate),
+			codecCreated:  false,
+			codec:         codecConfig.Codec,
+		}
+	case "h264_nvenc":
+		return &VideoDecoder{
+			sampleBuilder: samplebuilder.New(maxLate, &codecs.H264Packet{}, sampleRate),
+			codecCreated:  false,
+			codec:         codecConfig.Codec,
+		}
+	default:
+		panic("unsupported codec")
 	}
 }
 
@@ -72,8 +94,23 @@ func (s *VideoDecoder) Init() {
 
 	s.pkt = astiav.AllocPacket()
 	s.frame = astiav.AllocFrame()
-	if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
-		panic("failed to find decoder")
+	switch s.codec {
+	case "av1_nvenc":
+		// FIXME: wait til https://github.com/asticode/go-astiav/pull/146 is merged
+		panic("av1 decoder not implemented yet")
+		// if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
+		// 	panic("failed to find decoder")
+		// }
+	case "hevc_nvenc":
+		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDHevc)); s.decCodec == nil {
+			panic("failed to find decoder")
+		}
+	case "h264_nvenc":
+		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
+			panic("failed to find decoder")
+		}
+	default:
+		panic("unsupported codec")
 	}
 	if s.decCodecCtx = astiav.AllocCodecContext(s.decCodec); s.decCodecCtx == nil {
 		panic("failed to allocate codec context")

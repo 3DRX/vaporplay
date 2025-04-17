@@ -2,10 +2,13 @@ package peerconnection
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
+	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
+	"github.com/3DRX/vaporplay/config"
 	"github.com/3DRX/vaporplay/gamepaddto"
 	"github.com/3DRX/vaporplay/interceptor/nack"
 	"github.com/pion/interceptor"
@@ -14,6 +17,7 @@ import (
 )
 
 type PeerConnectionThread struct {
+	clientConfig    *clientconfig.ClientConfig
 	sdpChan         <-chan webrtc.SessionDescription
 	sdpReplyChan    chan<- webrtc.SessionDescription
 	candidateChan   <-chan webrtc.ICECandidateInit
@@ -22,6 +26,7 @@ type PeerConnectionThread struct {
 }
 
 func NewPeerConnectionThread(
+	clientConfig *clientconfig.ClientConfig,
 	sdpChan chan webrtc.SessionDescription,
 	sdpReplyChan chan<- webrtc.SessionDescription,
 	candidateChan <-chan webrtc.ICECandidateInit,
@@ -30,37 +35,8 @@ func NewPeerConnectionThread(
 	m := &webrtc.MediaEngine{}
 	i := &interceptor.Registry{}
 	s := webrtc.SettingEngine{}
-	if err := m.RegisterCodec(
-		webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:    webrtc.MimeTypeH264,
-				ClockRate:   90000,
-				Channels:    0,
-				SDPFmtpLine: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
-				RTCPFeedback: []webrtc.RTCPFeedback{
-					{Type: "nack", Parameter: ""},
-					{Type: "nack", Parameter: "pli"},
-				},
-			},
-			PayloadType: 112,
-		},
-		webrtc.RTPCodecTypeVideo,
-	); err != nil {
-		panic(err)
-	}
-	if err := m.RegisterCodec(
-		webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeRTX,
-				ClockRate:    90000,
-				Channels:     0,
-				SDPFmtpLine:  "apt=112",
-				RTCPFeedback: nil,
-			},
-			PayloadType: 113,
-		},
-		webrtc.RTPCodecTypeVideo,
-	); err != nil {
+
+	if err := configureCodec(m, clientConfig.SessionConfig.CodecConfig); err != nil {
 		panic(err)
 	}
 
@@ -94,6 +70,7 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 	return &PeerConnectionThread{
+		clientConfig:    clientConfig,
 		sdpChan:         sdpChan,
 		sdpReplyChan:    sdpReplyChan,
 		candidateChan:   candidateChan,
@@ -131,7 +108,7 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 }
 
 func (pc *PeerConnectionThread) Spin() {
-	videoDecoder := newVideoDecoder()
+	videoDecoder := newVideoDecoder(pc.clientConfig.SessionConfig.CodecConfig)
 	videoDecoder.Init()
 	pc.peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		slog.Info("OnConnectionStateChange", "state", state.String())
@@ -180,4 +157,84 @@ func (pc *PeerConnectionThread) Spin() {
 		}
 	})
 	go handleSignalingMessage(pc)
+}
+
+func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) error {
+	switch config.Codec {
+	case "av1_nvenc":
+		if err := m.RegisterCodec(
+			webrtc.RTPCodecParameters{
+				RTPCodecCapability: webrtc.RTPCodecCapability{
+					MimeType:    webrtc.MimeTypeAV1,
+					ClockRate:   90000,
+					Channels:    0,
+					SDPFmtpLine: "level-idx=5;profile=0;tier=0",
+					RTCPFeedback: []webrtc.RTCPFeedback{
+						{Type: "nack", Parameter: ""},
+						{Type: "nack", Parameter: "pli"},
+					},
+				},
+				PayloadType: 112,
+			},
+			webrtc.RTPCodecTypeVideo,
+		); err != nil {
+			return err
+		}
+	case "hevc_nvenc":
+		if err := m.RegisterCodec(
+			webrtc.RTPCodecParameters{
+				RTPCodecCapability: webrtc.RTPCodecCapability{
+					MimeType:    webrtc.MimeTypeH265,
+					ClockRate:   90000,
+					Channels:    0,
+					SDPFmtpLine: "",
+					RTCPFeedback: []webrtc.RTCPFeedback{
+						{Type: "nack", Parameter: ""},
+						{Type: "nack", Parameter: "pli"},
+					},
+				},
+				PayloadType: 112,
+			},
+			webrtc.RTPCodecTypeVideo,
+		); err != nil {
+			return err
+		}
+	case "h264_nvenc":
+		if err := m.RegisterCodec(
+			webrtc.RTPCodecParameters{
+				RTPCodecCapability: webrtc.RTPCodecCapability{
+					MimeType:    webrtc.MimeTypeH264,
+					ClockRate:   90000,
+					Channels:    0,
+					SDPFmtpLine: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+					RTCPFeedback: []webrtc.RTCPFeedback{
+						{Type: "nack", Parameter: ""},
+						{Type: "nack", Parameter: "pli"},
+					},
+				},
+				PayloadType: 112,
+			},
+			webrtc.RTPCodecTypeVideo,
+		); err != nil {
+			return err
+		}
+	default:
+		return errors.New("unsupported codec")
+	}
+	if err := m.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:     webrtc.MimeTypeRTX,
+				ClockRate:    90000,
+				Channels:     0,
+				SDPFmtpLine:  "apt=112",
+				RTCPFeedback: nil,
+			},
+			PayloadType: 113,
+		},
+		webrtc.RTPCodecTypeVideo,
+	); err != nil {
+		return err
+	}
+	return nil
 }

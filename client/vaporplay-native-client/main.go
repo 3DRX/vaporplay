@@ -22,6 +22,7 @@ func main() {
 		candidateChan,
 	)
 	peerconnectionThread := peerconnection.NewPeerConnectionThread(
+		clientCfg,
 		sdpChan,
 		sdpReplyChan,
 		candidateChan,
