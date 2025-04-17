@@ -1,8 +1,11 @@
 package peerconnection
 
 import (
-	"time"
+	"errors"
+	"image"
+	"log/slog"
 
+	"github.com/3DRX/vaporplay/utils"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -10,11 +13,14 @@ import (
 )
 
 type VideoDecoder struct {
-	sampleBuilder  *samplebuilder.SampleBuilder
-	videoTimestamp time.Duration
+	sampleBuilder *samplebuilder.SampleBuilder
 
-	lastVideoTimestamp uint32
-	codecCreated       bool
+	codecCreated bool
+
+	pkt         *astiav.Packet
+	frame       *astiav.Frame
+	decCodec    *astiav.Codec
+	decCodecCtx *astiav.CodecContext
 }
 
 func newVideoDecoder() *VideoDecoder {
@@ -31,6 +37,15 @@ func (s *VideoDecoder) Close() {
 }
 
 func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
+	frameTypeData := utils.GetFrameTypeDataFromH264Packet(rtpPacket)
+	if !s.codecCreated {
+		if frameTypeData.FrameType == utils.FrameTypeKeyFrame {
+			// TODO: parse PPS SPS
+			s.initCodec()
+		} else {
+			return
+		}
+	}
 	s.sampleBuilder.Push(rtpPacket)
 
 	for {
@@ -39,32 +54,43 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 			return
 		}
 
-		// Decode VP8 frame
-		// codecError := C.decode_frame(&s.codecCtx, (*C.uint8_t)(&sample.Data[0]), C.size_t(len(sample.Data)))
-		// if codecError != 0 {
-		// 	slog.Error("Decode error", "errorCode", codecError)
-		// 	continue
-		// }
-		// // Get decoded frames
-		// var iter C.vpx_codec_iter_t
-		// img := C.vpx_codec_get_frame(&s.codecCtx, &iter)
-		// if img == nil {
-		// 	slog.Error("Failed to get decoded frame")
-		// 	continue
-		// }
-		// var ros_img sensor_msgs_msg.Image
-		// var ros_img_c C.sensor_msgs__msg__Image
-		// C.vpx_to_ros_image(img, &ros_img_c)
-		// sensor_msgs_msg.ImageTypeSupport.AsGoStruct(&ros_img, unsafe.Pointer(&ros_img_c))
-		// C.cleanup_ros_image(&ros_img_c)
-		// s.imgChan <- &ros_img
+		s.pkt.FromData(sample.Data)
+		if err := s.decCodecCtx.SendPacket(s.pkt); err != nil {
+			slog.Error("sending packet failed", "error", err)
+		}
+
+		for {
+			if err := s.decCodecCtx.ReceiveFrame(s.frame); err != nil {
+				if errors.Is(err, astiav.ErrEof) || errors.Is(err, astiav.ErrEagain) {
+					continue
+				}
+				slog.Error("receiving frame failed", "error", err)
+				return
+			}
+			break
+		}
+
+		dst := &image.RGBA{}
+		s.frame.Data().ToImage(dst)
+		slog.Info("decoded frame", "width", s.frame.Width(), "height", s.frame.Height())
 	}
 }
 
-func (s *VideoDecoder) Init(width, height int) {
-	// if errCode := C.init_decoder(&s.codecCtx, C.uint(width), C.uint(height)); errCode != 0 {
-	// 	slog.Error("failed to initialize decoder", "error", errCode)
-	// }
+func (s *VideoDecoder) initCodec() {
 	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelDebug))
+
+	s.pkt = astiav.AllocPacket()
+	s.frame = astiav.AllocFrame()
+	if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
+		panic("failed to find decoder")
+	}
+	if s.decCodecCtx = astiav.AllocCodecContext(s.decCodec); s.decCodecCtx == nil {
+		panic("failed to allocate codec context")
+	}
+	s.decCodecCtx.SetProfile(astiav.Profile(astiav.ProfileH264Main))
+	s.decCodecCtx.SetSampleRate(90000)
+	if err := s.decCodecCtx.Open(s.decCodec, nil); err != nil {
+		panic("failed to open codec context")
+	}
 	s.codecCreated = true
 }

@@ -21,21 +21,6 @@ type PeerConnectionThread struct {
 	signalCandidate func(c webrtc.ICECandidateInit) error
 }
 
-// func registerHeaderExtensionURI(m *webrtc.MediaEngine, uris []string) {
-// 	for _, uri := range uris {
-// 		err := m.RegisterHeaderExtension(
-// 			webrtc.RTPHeaderExtensionCapability{
-// 				URI: uri,
-// 			},
-// 			webrtc.RTPCodecTypeVideo,
-// 			webrtc.RTPTransceiverDirectionRecvonly,
-// 		)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 	}
-// }
-
 func NewPeerConnectionThread(
 	sdpChan chan webrtc.SessionDescription,
 	sdpReplyChan chan<- webrtc.SessionDescription,
@@ -146,7 +131,7 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 }
 
 func (pc *PeerConnectionThread) Spin() {
-	// webmSaver := newWebmSaver(pc.messageChan)
+	videoDecoder := newVideoDecoder()
 	// t, err := pc.peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo,
 	// 	webrtc.RTPTransceiverInit{
 	// 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
@@ -198,7 +183,7 @@ func (pc *PeerConnectionThread) Spin() {
 				panic(readErr)
 			}
 			slog.Info("received rtp", "PayloadType", rtp.Header.PayloadType, "SequenceNumber", rtp.Header.SequenceNumber)
-			// webmSaver.PushVP8(rtp)
+			videoDecoder.PushPacket(rtp)
 		}
 	})
 	pc.peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {

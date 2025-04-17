@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/3DRX/vaporplay/interceptor/frametype"
+	"github.com/3DRX/vaporplay/utils"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtp"
 )
@@ -82,10 +83,10 @@ func (r *FecInterceptor) BindLocalStream(
 			})
 
 			// An example of how to get the frame type data from the attributes
-			frameTypeData, ok := attributes.Get(frametype.AttributesKey).(frametype.FrameTypeData)
+			frameTypeData, ok := attributes.Get(frametype.AttributesKey).(utils.FrameTypeData)
 			if ok {
 				if frameTypeData.Start {
-					if frameTypeData.FrameType == frametype.FrameTypeKeyFrame {
+					if frameTypeData.FrameType == utils.FrameTypeKeyFrame {
 						slog.Info("FecInterceptor key frame!!!!!!!!!!!")
 					}
 				}
