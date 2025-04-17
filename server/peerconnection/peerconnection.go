@@ -13,6 +13,7 @@ import (
 	"github.com/3DRX/vaporplay/codec/ffmpeg"
 	"github.com/3DRX/vaporplay/config"
 	"github.com/3DRX/vaporplay/gamecapture"
+	"github.com/3DRX/vaporplay/gamepaddto"
 	"github.com/3DRX/vaporplay/interceptor/cc"
 	"github.com/3DRX/vaporplay/interceptor/flexfec"
 	"github.com/3DRX/vaporplay/interceptor/frametype"
@@ -217,7 +218,7 @@ func (pc *PeerConnectionThread) Spin() {
 		slog.Info("datachannel open", "label", datachannel.Label(), "ID", datachannel.ID())
 	})
 	datachannel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		dto := &GamepadDTO{}
+		dto := &gamepaddto.GamepadDTO{}
 		err := json.Unmarshal(msg.Data, dto)
 		if err != nil {
 			slog.Warn("Failed to unmarshal datachannel message", "error", err)

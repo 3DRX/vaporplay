@@ -10,7 +10,7 @@ configure := --enable-libx264 --enable-gpl --enable-nonfree --enable-nvenc
 vaporplay: server/webui gamecapture/libwindowmatch.so gamecapture/libgamecapture.so $(srcPath)
 	go mod tidy && cd server && go mod tidy
 	cd ./server && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o ../vaporplay
-	cd ./client/vaporplay-native-client && go build -ldflags "-s -w" -o ../../vaporplay-native-client
+	cd ./client/vaporplay-native-client && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go build -ldflags "-s -w" -o ../../vaporplay-native-client
 
 gamecapture/libwindowmatch.so: gamecapture/window_match.c gamecapture/window_match.h
 	cd gamecapture && $(CC) -shared -o libwindowmatch.so -fPIC window_match.c $(FLAGS)
