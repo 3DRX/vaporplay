@@ -115,6 +115,7 @@ func newHardwareEncoder(r video.Reader, p prop.Media, params Params) (*hardwareE
 	case "h264_nvenc", "hevc_nvenc", "av1_nvenc":
 		codecOptions.Set("forced-idr", "1", 0)
 		codecOptions.Set("zerolatency", "1", 0)
+		codecOptions.Set("intra-refresh", "1", 0)
 		codecOptions.Set("delay", "0", 0)
 		codecOptions.Set("tune", "ll", 0)
 		codecOptions.Set("preset", "p1", 0)

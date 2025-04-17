@@ -1,0 +1,29 @@
+From c722dbf3e240703bef78220d15d6093842c3f687 Mon Sep 17 00:00:00 2001
+From: 3DRX <kjy20030228@icloud.com>
+Date: Fri, 18 Apr 2025 00:44:59 +0800
+Subject: [PATCH] disable the sending of SEI data
+
+---
+ libavcodec/nvenc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libavcodec/nvenc.c b/libavcodec/nvenc.c
+index 8327496937..eacd6e36de 100644
+--- a/libavcodec/nvenc.c
++++ b/libavcodec/nvenc.c
+@@ -1208,10 +1208,10 @@ static av_cold int nvenc_setup_h264_config(AVCodecContext *avctx)
+     h264->idrPeriod = cc->gopLength;
+ 
+     if (IS_CBR(cc->rcParams.rateControlMode)) {
+-        h264->outputBufferingPeriodSEI = 1;
++        h264->outputBufferingPeriodSEI = 0;
+     }
+ 
+-    h264->outputPictureTimingSEI = 1;
++    h264->outputPictureTimingSEI = 0;
+ 
+ #ifndef NVENC_NO_DEPRECATED_RC
+     if (cc->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ ||
+-- 
+2.39.5
+

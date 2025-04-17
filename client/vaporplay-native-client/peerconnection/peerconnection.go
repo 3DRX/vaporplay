@@ -132,26 +132,7 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 
 func (pc *PeerConnectionThread) Spin() {
 	videoDecoder := newVideoDecoder()
-	// t, err := pc.peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo,
-	// 	webrtc.RTPTransceiverInit{
-	// 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
-	// 	},
-	// )
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// track := t.Receiver().Track()
-	// slog.Info(
-	// 	"PeerConnectionThread::Spin",
-	// 	"track",
-	// 	track.ID(),
-	// 	"ssrc",
-	// 	track.SSRC(),
-	// 	"PayloadType",
-	// 	track.PayloadType(),
-	// 	"RTX SSRC",
-	// 	track.RtxSSRC(),
-	// )
+	videoDecoder.Init()
 	pc.peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		slog.Info("OnConnectionStateChange", "state", state.String())
 	})
@@ -182,7 +163,6 @@ func (pc *PeerConnectionThread) Spin() {
 			if readErr != nil {
 				panic(readErr)
 			}
-			slog.Info("received rtp", "PayloadType", rtp.Header.PayloadType, "SequenceNumber", rtp.Header.SequenceNumber)
 			videoDecoder.PushPacket(rtp)
 		}
 	})

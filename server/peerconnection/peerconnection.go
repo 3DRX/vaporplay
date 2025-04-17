@@ -380,7 +380,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		}
 		params.BitRate = config.InitialBitrate
 		params.FrameRate = config.FrameRate
-		params.KeyFrameInterval = -1
+		params.KeyFrameInterval = 120
 		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
 	case "hevc_nvenc":
 		params, err := ffmpeg.NewH265NVENCParams(
@@ -392,7 +392,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		}
 		params.BitRate = config.InitialBitrate
 		params.FrameRate = config.FrameRate
-		params.KeyFrameInterval = -1
+		params.KeyFrameInterval = 120
 		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
 	case "h264_nvenc":
 		params, err := ffmpeg.NewH264NVENCParams(
@@ -404,7 +404,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 		}
 		params.BitRate = config.InitialBitrate
 		params.FrameRate = config.FrameRate
-		params.KeyFrameInterval = -1
+		params.KeyFrameInterval = 120
 		codecSelectorOption = mediadevices.WithVideoEncoders(&params)
 	case "libx264":
 		params, err := ffmpeg.NewH264X264Params()

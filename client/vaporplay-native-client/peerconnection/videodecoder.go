@@ -5,7 +5,6 @@ import (
 	"image"
 	"log/slog"
 
-	"github.com/3DRX/vaporplay/utils"
 	"github.com/asticode/go-astiav"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -37,15 +36,6 @@ func (s *VideoDecoder) Close() {
 }
 
 func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
-	frameTypeData := utils.GetFrameTypeDataFromH264Packet(rtpPacket)
-	if !s.codecCreated {
-		if frameTypeData.FrameType == utils.FrameTypeKeyFrame {
-			// TODO: parse PPS SPS
-			s.initCodec()
-		} else {
-			return
-		}
-	}
 	s.sampleBuilder.Push(rtpPacket)
 
 	for {
@@ -57,6 +47,7 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 		s.pkt.FromData(sample.Data)
 		if err := s.decCodecCtx.SendPacket(s.pkt); err != nil {
 			slog.Error("sending packet failed", "error", err)
+			return
 		}
 
 		for {
@@ -76,8 +67,8 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 	}
 }
 
-func (s *VideoDecoder) initCodec() {
-	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelDebug))
+func (s *VideoDecoder) Init() {
+	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
 
 	s.pkt = astiav.AllocPacket()
 	s.frame = astiav.AllocFrame()
@@ -87,8 +78,6 @@ func (s *VideoDecoder) initCodec() {
 	if s.decCodecCtx = astiav.AllocCodecContext(s.decCodec); s.decCodecCtx == nil {
 		panic("failed to allocate codec context")
 	}
-	s.decCodecCtx.SetProfile(astiav.Profile(astiav.ProfileH264Main))
-	s.decCodecCtx.SetSampleRate(90000)
 	if err := s.decCodecCtx.Open(s.decCodec, nil); err != nil {
 		panic("failed to open codec context")
 	}

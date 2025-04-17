@@ -2,6 +2,7 @@ CC := gcc
 FLAGS := -lX11 -lXext -O3
 version=n7.0
 srcPath=tmp/$(version)/src
+patchPath=$(CURDIR)/patches/ffmpeg/$(version)
 CGO_CFLAGS := -I$(CURDIR)/gamecapture -I$(CURDIR)/tmp/$(version)/include/ -I/usr/local/cuda/include
 CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/local/cuda/lib64
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
@@ -27,6 +28,12 @@ $(srcPath):
 	rm -rf $(srcPath)
 	mkdir -p $(srcPath)
 	cd $(srcPath) && git clone --branch $(version) https://github.com/FFmpeg/FFmpeg .
+	# apply patches
+	cd $(srcPath) && \
+		for patch in $(wildcard $(patchPath)/*.patch); do \
+			echo "Applying patch $${patch}"; \
+			patch -p1 < $${patch}; \
+		done
 	cd $(srcPath) && ./configure --prefix=.. $(configure)
 	cd $(srcPath) && make -j8
 	cd $(srcPath) && make install
