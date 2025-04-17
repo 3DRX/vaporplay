@@ -4,6 +4,7 @@
 package nack
 
 import (
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
@@ -93,6 +94,20 @@ func (n *GeneratorInterceptor) BindRemoteStream(
 	if !n.streamsFilter(info) {
 		return reader
 	}
+
+	slog.Info(
+		"GeneratorInterceptor BindRemoteStream",
+		"ssrc",
+		info.SSRC,
+		"rtx",
+		info.SSRCRetransmission,
+		"mimeType",
+		info.MimeType,
+		"payloadType",
+		info.PayloadType,
+		"payloadTypeRtx",
+		info.PayloadTypeRetransmission,
+	)
 
 	// error is already checked in NewGeneratorInterceptor
 	receiveLog, _ := newReceiveLog(n.size)
