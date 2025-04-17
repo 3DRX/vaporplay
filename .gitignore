@@ -1,7 +1,7 @@
 *.so
 *.o
 vaporplay
-vaporplay-native-client
+./vaporplay-native-client
 tmp/
 *.csv
 config-local.json
