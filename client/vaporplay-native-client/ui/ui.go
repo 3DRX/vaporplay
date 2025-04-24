@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"log"
 	"log/slog"
+	"sync"
+	"time"
 
 	"golang.org/x/image/font/gofont/goregular"
 
@@ -22,7 +24,10 @@ type UIThread struct {
 }
 
 type ebitenGame struct {
-	ui *ebitenui.UI
+	ui    *ebitenui.UI
+	frame *ebiten.Image
+
+	lock sync.Mutex
 }
 
 func NewUIThread() (*UIThread, chan *clientconfig.ClientConfig) {
@@ -70,6 +75,21 @@ func NewUIThread() (*UIThread, chan *clientconfig.ClientConfig) {
 }
 
 func (u *UIThread) Spin() {
+	imgGenerator := VideoRecord()
+	go func() {
+		ticker := time.NewTicker(8300 * time.Microsecond)
+		for {
+			select {
+			case <-ticker.C:
+				img := imgGenerator()
+				u.game.lock.Lock()
+				u.game.frame = ebiten.NewImageFromImage(img)
+				u.game.lock.Unlock()
+			default:
+			}
+		}
+	}()
+
 	err := ebiten.RunGame(u.game)
 	if err != nil {
 		slog.Error("ebiten error", "error", err)
@@ -107,17 +127,46 @@ func (u *UIThread) Spin() {
 
 func (g *ebitenGame) Update() error {
 	// ui.Update() must be called in ebiten Update function, to handle user input and other things
-	g.ui.Update()
+	// g.ui.Update()
 	return nil
 }
 
 func (g *ebitenGame) Draw(screen *ebiten.Image) {
 	// ui.Draw() should be called in the ebiten Draw function, to draw the UI onto the screen.
 	// It should also be called after all other rendering for your game so that it shows up on top of your game world.
-	g.ui.Draw(screen)
+	// g.ui.Draw(screen)
+
+	// draw the frame
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	var windowWidth, windowHeight int
+
+	if ebiten.IsFullscreen() {
+		windowWidth, windowHeight = ebiten.Monitor().Size()
+	} else {
+		windowWidth, windowHeight = ebiten.WindowSize()
+	}
+	w := g.frame.Bounds().Dx()
+	h := g.frame.Bounds().Dy()
+	scaleX := float64(windowWidth) / float64(w)
+	scaleY := float64(windowHeight) / float64(h)
+	scale := min(scaleY, scaleX)
+
+	scaledWidth := float64(w) * scale
+	scaledHeight := float64(h) * scale
+	offsetX := (float64(windowWidth) - scaledWidth) / 2
+	offsetY := (float64(windowHeight) - scaledHeight) / 2
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(offsetX, offsetY)
+
+	screen.DrawImage(g.frame, op)
 }
 
 func (g *ebitenGame) Layout(outsideWidth int, outsideHeight int) (int, int) {
-	s := ebiten.Monitor().DeviceScaleFactor()
-	return int(float64(outsideWidth) * s), int(float64(outsideHeight) * s)
+	return outsideWidth, outsideHeight
+	// s := ebiten.Monitor().DeviceScaleFactor()
+	// return int(float64(outsideWidth) * s), int(float64(outsideHeight) * s)
 }
