@@ -20,13 +20,11 @@ type SignalingThread struct {
 }
 
 func NewSignalingThread(
-	cfg *clientconfig.ClientConfig,
 	sdpChan chan webrtc.SessionDescription,
 	sdpReplyChan <-chan webrtc.SessionDescription,
 	candidateChan chan<- webrtc.ICECandidateInit,
 ) *SignalingThread {
 	return &SignalingThread{
-		cfg:           cfg,
 		recv:          make(chan []byte),
 		c:             nil,
 		sdpChan:       sdpChan,
@@ -46,7 +44,8 @@ func (s *SignalingThread) SignalCandidate(candidate webrtc.ICECandidateInit) err
 	return nil
 }
 
-func (s *SignalingThread) Spin() {
+func (s *SignalingThread) Spin(cfg *clientconfig.ClientConfig) {
+	s.cfg = cfg
 	u := url.URL{Scheme: "ws", Host: s.cfg.Addr, Path: "/webrtc"}
 	slog.Info("start spinning", "url", u.String())
 	wsConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
