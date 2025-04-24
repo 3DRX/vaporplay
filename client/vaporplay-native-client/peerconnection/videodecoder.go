@@ -96,11 +96,9 @@ func (s *VideoDecoder) Init() {
 	s.frame = astiav.AllocFrame()
 	switch s.codec {
 	case "av1_nvenc":
-		// FIXME: wait til https://github.com/asticode/go-astiav/pull/146 is merged
-		panic("av1 decoder not implemented yet")
-		// if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
-		// 	panic("failed to find decoder")
-		// }
+		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDAv1)); s.decCodec == nil {
+			panic("failed to find decoder")
+		}
 	case "hevc_nvenc":
 		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDHevc)); s.decCodec == nil {
 			panic("failed to find decoder")

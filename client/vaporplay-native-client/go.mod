@@ -6,7 +6,7 @@ replace github.com/3DRX/vaporplay => ../../
 
 require (
 	github.com/3DRX/vaporplay v0.0.0-00010101000000-000000000000
-	github.com/asticode/go-astiav v0.35.1
+	github.com/asticode/go-astiav v0.36.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/interceptor v0.1.37
 	github.com/pion/rtcp v1.2.15

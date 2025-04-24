@@ -58,4 +58,4 @@ clean-deps: clean
 	rm -rf ./client/vaporplay-web-client/node_modules/
 	rm -rf $(srcPath)
 
-.PHONY: clean clean-deps vaporplay build-ffmpeg
+.PHONY: clean clean-deps vaporplay build-client-only-ffmpeg vaporplay-native-client all
