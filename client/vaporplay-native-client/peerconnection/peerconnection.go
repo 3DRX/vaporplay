@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"log/slog"
 	"time"
 
@@ -23,6 +24,7 @@ type PeerConnectionThread struct {
 	candidateChan   <-chan webrtc.ICECandidateInit
 	peerConnection  *webrtc.PeerConnection
 	signalCandidate func(c webrtc.ICECandidateInit) error
+	frameChan       chan<- image.Image
 }
 
 func NewPeerConnectionThread(
@@ -31,6 +33,7 @@ func NewPeerConnectionThread(
 	sdpReplyChan chan<- webrtc.SessionDescription,
 	candidateChan <-chan webrtc.ICECandidateInit,
 	signalCandidate func(c webrtc.ICECandidateInit) error,
+	frameChan chan<- image.Image,
 ) *PeerConnectionThread {
 	m := &webrtc.MediaEngine{}
 	i := &interceptor.Registry{}
@@ -49,7 +52,7 @@ func NewPeerConnectionThread(
 	}
 	i.Add(nackGenerator)
 
-	s.SetFireOnTrackBeforeFirstRTP(true)
+	// s.SetFireOnTrackBeforeFirstRTP(true)
 
 	api := webrtc.NewAPI(
 		webrtc.WithMediaEngine(m),
@@ -76,6 +79,7 @@ func NewPeerConnectionThread(
 		candidateChan:   candidateChan,
 		peerConnection:  peerConnection,
 		signalCandidate: signalCandidate,
+		frameChan:       frameChan,
 	}
 }
 
@@ -102,13 +106,13 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 			if err != nil {
 				panic(err)
 			}
-			slog.Info("received ICE candidate", "candidate", candidate)
+			slog.Info("received ICE candidate")
 		}
 	}
 }
 
 func (pc *PeerConnectionThread) Spin() {
-	videoDecoder := newVideoDecoder(pc.clientConfig.SessionConfig.CodecConfig)
+	videoDecoder := newVideoDecoder(pc.clientConfig.SessionConfig.CodecConfig, pc.frameChan)
 	videoDecoder.Init()
 	pc.peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		slog.Info("OnConnectionStateChange", "state", state.String())
@@ -122,7 +126,7 @@ func (pc *PeerConnectionThread) Spin() {
 		}
 	})
 	pc.peerConnection.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		slog.Info("PeerConnectionChannel: received track", "track", track.ID())
+		slog.Info("PeerConnectionChannel: OnTrack", "track", track.ID())
 		if track.Kind() == webrtc.RTPCodecTypeVideo {
 			// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
 			go func() {

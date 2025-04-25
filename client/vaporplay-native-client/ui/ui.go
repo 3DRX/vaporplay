@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"image"
 	"log/slog"
 	"sync"
 	"time"
@@ -8,9 +9,11 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
+	"github.com/3DRX/vaporplay/config"
 )
 
 type UIThread struct {
+	frameChan        <-chan image.Image
 	startGamePromise chan *clientconfig.ClientConfig
 	game             *ebitenGame
 }
@@ -21,7 +24,7 @@ type ebitenGame struct {
 	lock sync.Mutex
 }
 
-func NewUIThread() (*UIThread, chan *clientconfig.ClientConfig) {
+func NewUIThread(frameChan <-chan image.Image) (*UIThread, chan *clientconfig.ClientConfig) {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("VaporPlay")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
@@ -32,26 +35,26 @@ func NewUIThread() (*UIThread, chan *clientconfig.ClientConfig) {
 	startGamePromise := make(chan *clientconfig.ClientConfig)
 
 	return &UIThread{
+		frameChan:        frameChan,
 		startGamePromise: startGamePromise,
 		game:             game,
 	}, startGamePromise
 }
 
 func (u *UIThread) Spin() {
-	imgGenerator := VideoRecord()
+	// imgGenerator := VideoRecord()
 	go func() {
-		ticker := time.NewTicker(8300 * time.Microsecond)
+		// ticker := time.NewTicker(8300 * time.Microsecond)
 		for {
-			select {
-			case <-ticker.C:
-				img := imgGenerator()
-				u.game.lock.Lock()
-				u.game.frame = ebiten.NewImageFromImage(img)
-				u.game.lock.Unlock()
-			default:
-			}
+			img := <-u.frameChan
+			// img := imgGenerator()
+			u.game.lock.Lock()
+			u.game.frame = ebiten.NewImageFromImage(img)
+			u.game.lock.Unlock()
 		}
 	}()
+
+	go u.readConfig()
 
 	err := ebiten.RunGame(u.game)
 	if err != nil {
@@ -59,34 +62,34 @@ func (u *UIThread) Spin() {
 	}
 }
 
-// func (u *UIThread) doSomeThing() {
-// 	// wait for 2 seconds, mock user input
-// 	time.Sleep(2 * time.Second)
+func (u *UIThread) readConfig() {
+	// wait for 2 seconds, mock user input
+	time.Sleep(2 * time.Second)
 
-// 	cfg := &clientconfig.ClientConfig{
-// 		Addr: "localhost:8080",
-// 		SessionConfig: config.SessionConfig{
-// 			GameConfig: config.GameConfig{
-// 				GameId:          "383870",
-// 				GameWindowName:  "Firewatch",
-// 				GameDisplayName: "Fire Watch",
-// 				GameIcon:        "",
-// 				EndGameCommands: []config.KillProcessCommandConfig{{
-// 					Flags:       []string{},
-// 					ProcessName: "fw.x86_64",
-// 				}},
-// 			},
-// 			CodecConfig: config.CodecConfig{
-// 				Codec:          "h264_nvenc",
-// 				InitialBitrate: 5_000_000,
-// 				MaxBitrate:     20_000_000,
-// 				FrameRate:      60,
-// 			},
-// 		},
-// 	}
-// 	slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
-// 	u.startGamePromise <- cfg
-// }
+	cfg := &clientconfig.ClientConfig{
+		Addr: "10.129.89.200:8080",
+		SessionConfig: config.SessionConfig{
+			GameConfig: config.GameConfig{
+				GameId:          "588650",
+				GameWindowName:  "Dead Cells",
+				GameDisplayName: "Dead Cells",
+				GameIcon:        "",
+				EndGameCommands: []config.KillProcessCommandConfig{{
+					Flags:       []string{},
+					ProcessName: "deadcells",
+				}},
+			},
+			CodecConfig: config.CodecConfig{
+				Codec:          "h264_nvenc",
+				InitialBitrate: 5_000_000,
+				MaxBitrate:     20_000_000,
+				FrameRate:      120,
+			},
+		},
+	}
+	slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
+	u.startGamePromise <- cfg
+}
 
 func (g *ebitenGame) Update() error {
 	return nil

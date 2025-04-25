@@ -96,7 +96,6 @@ func (s *SignalingThread) Spin(cfg *clientconfig.ClientConfig) {
 			slog.Error("unmarshal error", "error", err)
 			continue
 		}
-		slog.Info("recv candidate", "candidate", candidate)
 		s.candidateChan <- candidate
 	}
 }

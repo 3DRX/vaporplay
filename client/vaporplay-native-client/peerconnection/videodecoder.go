@@ -22,9 +22,11 @@ type VideoDecoder struct {
 	frame       *astiav.Frame
 	decCodec    *astiav.Codec
 	decCodecCtx *astiav.CodecContext
+
+	frameChan chan<- image.Image
 }
 
-func newVideoDecoder(codecConfig config.CodecConfig) *VideoDecoder {
+func newVideoDecoder(codecConfig config.CodecConfig, frameChan chan<- image.Image) *VideoDecoder {
 	maxLate := uint16(200)
 	sampleRate := uint32(90000)
 	switch codecConfig.Codec {
@@ -33,18 +35,21 @@ func newVideoDecoder(codecConfig config.CodecConfig) *VideoDecoder {
 			sampleBuilder: samplebuilder.New(maxLate, &codecs.AV1Depacketizer{}, sampleRate),
 			codecCreated:  false,
 			codec:         codecConfig.Codec,
+			frameChan:     frameChan,
 		}
 	case "hevc_nvenc":
 		return &VideoDecoder{
 			sampleBuilder: samplebuilder.New(maxLate, &codecs.H265Packet{}, sampleRate),
 			codecCreated:  false,
 			codec:         codecConfig.Codec,
+			frameChan:     frameChan,
 		}
 	case "h264_nvenc":
 		return &VideoDecoder{
 			sampleBuilder: samplebuilder.New(maxLate, &codecs.H264Packet{}, sampleRate),
 			codecCreated:  false,
 			codec:         codecConfig.Codec,
+			frameChan:     frameChan,
 		}
 	default:
 		panic("unsupported codec")
@@ -86,6 +91,7 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 		dst := &image.RGBA{}
 		s.frame.Data().ToImage(dst)
 		slog.Info("decoded frame", "width", s.frame.Width(), "height", s.frame.Height())
+		s.frameChan <- dst
 	}
 }
 
