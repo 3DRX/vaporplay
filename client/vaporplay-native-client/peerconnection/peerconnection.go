@@ -23,7 +23,6 @@ type PeerConnectionThread struct {
 	sdpReplyChan    chan<- webrtc.SessionDescription
 	candidateChan   <-chan webrtc.ICECandidateInit
 	peerConnection  *webrtc.PeerConnection
-	signalCandidate func(c webrtc.ICECandidateInit) error
 	frameChan       chan<- image.Image
 }
 
@@ -32,7 +31,6 @@ func NewPeerConnectionThread(
 	sdpChan chan webrtc.SessionDescription,
 	sdpReplyChan chan<- webrtc.SessionDescription,
 	candidateChan <-chan webrtc.ICECandidateInit,
-	signalCandidate func(c webrtc.ICECandidateInit) error,
 	frameChan chan<- image.Image,
 ) *PeerConnectionThread {
 	m := &webrtc.MediaEngine{}
@@ -52,8 +50,6 @@ func NewPeerConnectionThread(
 	}
 	i.Add(nackGenerator)
 
-	s.SetFireOnTrackBeforeFirstRTP(true)
-
 	api := webrtc.NewAPI(
 		webrtc.WithMediaEngine(m),
 		webrtc.WithInterceptorRegistry(i),
@@ -65,7 +61,7 @@ func NewPeerConnectionThread(
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
 		},
-		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
+		// SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 	peerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
@@ -78,7 +74,6 @@ func NewPeerConnectionThread(
 		sdpReplyChan:    sdpReplyChan,
 		candidateChan:   candidateChan,
 		peerConnection:  peerConnection,
-		signalCandidate: signalCandidate,
 		frameChan:       frameChan,
 	}
 }
@@ -87,7 +82,6 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 	for {
 		select {
 		case sdp := <-pc.sdpChan:
-			slog.Info("received SDP", "sdp", sdp.SDP)
 			err := pc.peerConnection.SetRemoteDescription(sdp)
 			if err != nil {
 				panic(err)
@@ -96,17 +90,16 @@ func handleSignalingMessage(pc *PeerConnectionThread) {
 			if err != nil {
 				panic(err)
 			}
-			pc.sdpReplyChan <- answer
 			err = pc.peerConnection.SetLocalDescription(answer)
 			if err != nil {
 				panic(err)
 			}
+			pc.sdpReplyChan <- answer
 		case candidate := <-pc.candidateChan:
 			err := pc.peerConnection.AddICECandidate(candidate)
 			if err != nil {
 				panic(err)
 			}
-			slog.Info("received ICE candidate")
 		}
 	}
 }
@@ -117,13 +110,11 @@ func (pc *PeerConnectionThread) Spin() {
 	pc.peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		slog.Info("OnConnectionStateChange", "state", state.String())
 	})
-	pc.peerConnection.OnICECandidate(func(c *webrtc.ICECandidate) {
-		if c == nil {
-			return
-		}
-		if err := pc.signalCandidate(c.ToJSON()); err != nil {
-			panic(err)
-		}
+	pc.peerConnection.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+		slog.Info("OnICEConnectionStateChange", "state", state.String())
+	})
+	pc.peerConnection.OnICEGatheringStateChange(func(state webrtc.ICEGatheringState) {
+		slog.Info("OnICEGatheringStateChange", "state", state.String())
 	})
 	pc.peerConnection.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		slog.Info("PeerConnectionChannel: OnTrack", "track", track.ID())
@@ -160,7 +151,8 @@ func (pc *PeerConnectionThread) Spin() {
 			d.SendText(string(dtoString))
 		}
 	})
-	go handleSignalingMessage(pc)
+
+	handleSignalingMessage(pc)
 }
 
 func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) error {

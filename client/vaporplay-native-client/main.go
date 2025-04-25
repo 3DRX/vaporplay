@@ -29,7 +29,6 @@ func main() {
 			sdpChan,
 			sdpReplyChan,
 			candidateChan,
-			signalingThread.SignalCandidate,
 			frameChan,
 		)
 		go peerconnectionThread.Spin()

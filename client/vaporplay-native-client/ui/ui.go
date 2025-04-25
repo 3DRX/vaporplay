@@ -42,12 +42,9 @@ func NewUIThread(frameChan <-chan image.Image) (*UIThread, chan *clientconfig.Cl
 }
 
 func (u *UIThread) Spin() {
-	// imgGenerator := VideoRecord()
 	go func() {
-		// ticker := time.NewTicker(8300 * time.Microsecond)
 		for {
 			img := <-u.frameChan
-			// img := imgGenerator()
 			u.game.lock.Lock()
 			u.game.frame = ebiten.NewImageFromImage(img)
 			u.game.lock.Unlock()
@@ -67,16 +64,16 @@ func (u *UIThread) readConfig() {
 	time.Sleep(2 * time.Second)
 
 	cfg := &clientconfig.ClientConfig{
-		Addr: "192.168.2.213:8080",
+		Addr: "192.168.1.35:8080",
 		SessionConfig: config.SessionConfig{
 			GameConfig: config.GameConfig{
-				GameId:          "383870",
-				GameWindowName:  "Firewatch",
-				GameDisplayName: "Fire Watch",
+				GameId:          "588650",
+				GameWindowName:  "Dead Cells",
+				GameDisplayName: "Dead Cells",
 				GameIcon:        "",
 				EndGameCommands: []config.KillProcessCommandConfig{{
 					Flags:       []string{},
-					ProcessName: "fw.x86_64",
+					ProcessName: "deadcells",
 				}},
 			},
 			CodecConfig: config.CodecConfig{
