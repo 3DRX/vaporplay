@@ -80,7 +80,7 @@ func (u *UIThread) readConfig() {
 				}},
 			},
 			CodecConfig: config.CodecConfig{
-				Codec:          "av1_nvenc",
+				Codec:          "h264_nvenc",
 				InitialBitrate: 10_000_000,
 				MaxBitrate:     20_000_000,
 				FrameRate:      60,
