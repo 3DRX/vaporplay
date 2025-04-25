@@ -1,0 +1,42 @@
+From 0c6e17b59e7546d4364b0a522ebab05b466b2906 Mon Sep 17 00:00:00 2001
+From: 3DRX <kjy20030228@icloud.com>
+Date: Fri, 18 Apr 2025 02:17:52 +0800
+Subject: [PATCH] disable sending SEI in hevc/h264_nvenc
+
+---
+ libavcodec/nvenc.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libavcodec/nvenc.c b/libavcodec/nvenc.c
+index 8327496937..a5bcf43f5a 100644
+--- a/libavcodec/nvenc.c
++++ b/libavcodec/nvenc.c
+@@ -1208,10 +1208,10 @@ static av_cold int nvenc_setup_h264_config(AVCodecContext *avctx)
+     h264->idrPeriod = cc->gopLength;
+ 
+     if (IS_CBR(cc->rcParams.rateControlMode)) {
+-        h264->outputBufferingPeriodSEI = 1;
++        h264->outputBufferingPeriodSEI = 0;
+     }
+ 
+-    h264->outputPictureTimingSEI = 1;
++    h264->outputPictureTimingSEI = 0;
+ 
+ #ifndef NVENC_NO_DEPRECATED_RC
+     if (cc->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ ||
+@@ -1341,10 +1341,10 @@ static av_cold int nvenc_setup_hevc_config(AVCodecContext *avctx)
+     hevc->idrPeriod = cc->gopLength;
+ 
+     if (IS_CBR(cc->rcParams.rateControlMode)) {
+-        hevc->outputBufferingPeriodSEI = 1;
++        hevc->outputBufferingPeriodSEI = 0;
+     }
+ 
+-    hevc->outputPictureTimingSEI = 1;
++    hevc->outputPictureTimingSEI = 0;
+ 
+     switch (ctx->profile) {
+     case NV_ENC_HEVC_PROFILE_MAIN:
+-- 
+2.39.5
+

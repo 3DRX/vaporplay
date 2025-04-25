@@ -1,14 +1,12 @@
 package peerconnection
 
-import "github.com/3DRX/vaporplay/uinput"
+import (
+	"github.com/3DRX/vaporplay/gamepaddto"
+	"github.com/3DRX/vaporplay/uinput"
+)
 
 type GamepadControl struct {
 	Gamepad uinput.Gamepad
-}
-
-type GamepadDTO struct {
-	Buttons []float32 `json:"b"`
-	Axes    []float32 `json:"a"`
 }
 
 func NewGamepadControl() (*GamepadControl, error) {
@@ -42,7 +40,7 @@ var ButtonMap = map[int]int{
 	15: uinput.ButtonDpadRight,
 }
 
-func (g *GamepadControl) SendGamepadState(dto *GamepadDTO) {
+func (g *GamepadControl) SendGamepadState(dto *gamepaddto.GamepadDTO) {
 	for i, v := range dto.Buttons {
 		if v > 0 {
 			uinputButton, ok := ButtonMap[i]
