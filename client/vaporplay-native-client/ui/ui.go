@@ -1,19 +1,11 @@
 package ui
 
 import (
-	"bytes"
-	"image/color"
-	"log"
 	"log/slog"
 	"sync"
 	"time"
 
-	"golang.org/x/image/font/gofont/goregular"
-
-	"github.com/ebitenui/ebitenui"
-	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
 )
@@ -24,7 +16,6 @@ type UIThread struct {
 }
 
 type ebitenGame struct {
-	ui    *ebitenui.UI
 	frame *ebiten.Image
 
 	lock sync.Mutex
@@ -36,41 +27,13 @@ func NewUIThread() (*UIThread, chan *clientconfig.ClientConfig) {
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetVsyncEnabled(false)
 
-	// This creates the root container for this UI.
-	// All other UI elements must be added to this container.
-	rootContainer := widget.NewContainer()
-
-	// This adds the root container to the UI, so that it will be rendered.
-	eui := &ebitenui.UI{
-		Container: rootContainer,
-	}
-
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(goregular.TTF))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fontFace := &text.GoTextFace{
-		Source: s,
-		Size:   32,
-	}
-	// This creates a text widget that says "Hello World!"
-	helloWorldLabel := widget.NewText(
-		widget.TextOpts.Text("Hello World!", fontFace, color.White),
-	)
-
-	// To display the text widget, we have to add it to the root container.
-	rootContainer.AddChild(helloWorldLabel)
-
-	game := ebitenGame{
-		ui: eui,
-	}
+	game := &ebitenGame{}
 
 	startGamePromise := make(chan *clientconfig.ClientConfig)
 
 	return &UIThread{
 		startGamePromise: startGamePromise,
-		game:             &game,
+		game:             game,
 	}, startGamePromise
 }
 
@@ -126,19 +89,16 @@ func (u *UIThread) Spin() {
 // }
 
 func (g *ebitenGame) Update() error {
-	// ui.Update() must be called in ebiten Update function, to handle user input and other things
-	// g.ui.Update()
 	return nil
 }
 
 func (g *ebitenGame) Draw(screen *ebiten.Image) {
-	// ui.Draw() should be called in the ebiten Draw function, to draw the UI onto the screen.
-	// It should also be called after all other rendering for your game so that it shows up on top of your game world.
-	// g.ui.Draw(screen)
-
-	// draw the frame
 	g.lock.Lock()
 	defer g.lock.Unlock()
+
+	if g.frame == nil {
+		return
+	}
 
 	var windowWidth, windowHeight int
 
@@ -147,6 +107,9 @@ func (g *ebitenGame) Draw(screen *ebiten.Image) {
 	} else {
 		windowWidth, windowHeight = ebiten.WindowSize()
 	}
+	s := ebiten.Monitor().DeviceScaleFactor()
+	windowWidth = int(float64(windowWidth) * s)
+	windowHeight = int(float64(windowHeight) * s)
 	w := g.frame.Bounds().Dx()
 	h := g.frame.Bounds().Dy()
 	scaleX := float64(windowWidth) / float64(w)
@@ -166,7 +129,7 @@ func (g *ebitenGame) Draw(screen *ebiten.Image) {
 }
 
 func (g *ebitenGame) Layout(outsideWidth int, outsideHeight int) (int, int) {
-	return outsideWidth, outsideHeight
-	// s := ebiten.Monitor().DeviceScaleFactor()
-	// return int(float64(outsideWidth) * s), int(float64(outsideHeight) * s)
+	// return outsideWidth, outsideHeight
+	s := ebiten.Monitor().DeviceScaleFactor()
+	return int(float64(outsideWidth) * s), int(float64(outsideHeight) * s)
 }
