@@ -52,7 +52,7 @@ func NewPeerConnectionThread(
 	}
 	i.Add(nackGenerator)
 
-	// s.SetFireOnTrackBeforeFirstRTP(true)
+	s.SetFireOnTrackBeforeFirstRTP(true)
 
 	api := webrtc.NewAPI(
 		webrtc.WithMediaEngine(m),
