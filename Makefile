@@ -7,7 +7,7 @@ CGO_CFLAGS := -I$(CURDIR)/gamecapture -I$(CURDIR)/tmp/$(version)/include/ -I/usr
 CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/ -L/usr/local/cuda/lib64
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-libx265 --enable-decoder=hevc --enable-gpl --enable-nonfree --enable-nvenc
-configure-client-only := --enable-libx264 --enable-libx265 --enable-gpl --enable-nonfree
+configure-client-only := --enable-libx264 --enable-libx265 --enable-libaom --enable-gpl --enable-nonfree
 
 all: vaporplay vaporplay-native-client
 

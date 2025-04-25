@@ -88,9 +88,8 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 			break
 		}
 
-		dst := &image.RGBA{}
+		dst := &image.YCbCr{}
 		s.frame.Data().ToImage(dst)
-		slog.Info("decoded frame", "width", s.frame.Width(), "height", s.frame.Height())
 		s.frameChan <- dst
 	}
 }

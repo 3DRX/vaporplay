@@ -67,23 +67,23 @@ func (u *UIThread) readConfig() {
 	time.Sleep(2 * time.Second)
 
 	cfg := &clientconfig.ClientConfig{
-		Addr: "10.129.89.200:8080",
+		Addr: "192.168.2.213:8080",
 		SessionConfig: config.SessionConfig{
 			GameConfig: config.GameConfig{
-				GameId:          "588650",
-				GameWindowName:  "Dead Cells",
-				GameDisplayName: "Dead Cells",
+				GameId:          "383870",
+				GameWindowName:  "Firewatch",
+				GameDisplayName: "Fire Watch",
 				GameIcon:        "",
 				EndGameCommands: []config.KillProcessCommandConfig{{
 					Flags:       []string{},
-					ProcessName: "deadcells",
+					ProcessName: "fw.x86_64",
 				}},
 			},
 			CodecConfig: config.CodecConfig{
-				Codec:          "h264_nvenc",
-				InitialBitrate: 5_000_000,
+				Codec:          "av1_nvenc",
+				InitialBitrate: 10_000_000,
 				MaxBitrate:     20_000_000,
-				FrameRate:      120,
+				FrameRate:      60,
 			},
 		},
 	}
