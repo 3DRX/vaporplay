@@ -61,6 +61,7 @@ func NewPeerConnectionThread(
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
 		},
+		// FIXME: pion's SetRemoteDescription will treat sdp as PlanB if it contains FEC track
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 	peerConnection, err := api.NewPeerConnection(config)
