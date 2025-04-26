@@ -18,12 +18,12 @@ import (
 )
 
 type PeerConnectionThread struct {
-	clientConfig    *clientconfig.ClientConfig
-	sdpChan         <-chan webrtc.SessionDescription
-	sdpReplyChan    chan<- webrtc.SessionDescription
-	candidateChan   <-chan webrtc.ICECandidateInit
-	peerConnection  *webrtc.PeerConnection
-	frameChan       chan<- image.Image
+	clientConfig   *clientconfig.ClientConfig
+	sdpChan        <-chan webrtc.SessionDescription
+	sdpReplyChan   chan<- webrtc.SessionDescription
+	candidateChan  <-chan webrtc.ICECandidateInit
+	peerConnection *webrtc.PeerConnection
+	frameChan      chan<- image.Image
 }
 
 func NewPeerConnectionThread(
@@ -61,7 +61,7 @@ func NewPeerConnectionThread(
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
 		},
-		// SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
+		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	}
 	peerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
@@ -69,12 +69,12 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 	return &PeerConnectionThread{
-		clientConfig:    clientConfig,
-		sdpChan:         sdpChan,
-		sdpReplyChan:    sdpReplyChan,
-		candidateChan:   candidateChan,
-		peerConnection:  peerConnection,
-		frameChan:       frameChan,
+		clientConfig:   clientConfig,
+		sdpChan:        sdpChan,
+		sdpReplyChan:   sdpReplyChan,
+		candidateChan:  candidateChan,
+		peerConnection: peerConnection,
+		frameChan:      frameChan,
 	}
 }
 
