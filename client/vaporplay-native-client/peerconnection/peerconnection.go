@@ -18,12 +18,13 @@ import (
 )
 
 type PeerConnectionThread struct {
-	clientConfig   *clientconfig.ClientConfig
-	sdpChan        <-chan webrtc.SessionDescription
-	sdpReplyChan   chan<- webrtc.SessionDescription
-	candidateChan  <-chan webrtc.ICECandidateInit
-	peerConnection *webrtc.PeerConnection
-	frameChan      chan<- image.Image
+	clientConfig       *clientconfig.ClientConfig
+	sdpChan            <-chan webrtc.SessionDescription
+	sdpReplyChan       chan<- webrtc.SessionDescription
+	candidateChan      <-chan webrtc.ICECandidateInit
+	peerConnection     *webrtc.PeerConnection
+	frameChan          chan<- image.Image
+	closeWindowPromise <-chan struct{}
 }
 
 func NewPeerConnectionThread(
@@ -32,6 +33,7 @@ func NewPeerConnectionThread(
 	sdpReplyChan chan<- webrtc.SessionDescription,
 	candidateChan <-chan webrtc.ICECandidateInit,
 	frameChan chan<- image.Image,
+	closeWindowPromise <-chan struct{},
 ) *PeerConnectionThread {
 	m := &webrtc.MediaEngine{}
 	i := &interceptor.Registry{}
@@ -70,12 +72,13 @@ func NewPeerConnectionThread(
 	}
 	slog.Info("Created peer connection")
 	return &PeerConnectionThread{
-		clientConfig:   clientConfig,
-		sdpChan:        sdpChan,
-		sdpReplyChan:   sdpReplyChan,
-		candidateChan:  candidateChan,
-		peerConnection: peerConnection,
-		frameChan:      frameChan,
+		clientConfig:       clientConfig,
+		sdpChan:            sdpChan,
+		sdpReplyChan:       sdpReplyChan,
+		candidateChan:      candidateChan,
+		peerConnection:     peerConnection,
+		frameChan:          frameChan,
+		closeWindowPromise: closeWindowPromise,
 	}
 }
 
@@ -152,6 +155,15 @@ func (pc *PeerConnectionThread) Spin() {
 			d.SendText(string(dtoString))
 		}
 	})
+
+	go func() {
+		<-pc.closeWindowPromise
+		err := pc.peerConnection.GracefulClose()
+		// FIXME: this can't close properly
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	handleSignalingMessage(pc)
 }

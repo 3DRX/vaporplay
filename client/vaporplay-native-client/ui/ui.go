@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -19,7 +20,8 @@ type UIThread struct {
 }
 
 type ebitenGame struct {
-	frame *ebiten.Image
+	frame              *ebiten.Image
+	closeWindowPromise chan<- struct{}
 
 	lock sync.Mutex
 }
@@ -27,13 +29,17 @@ type ebitenGame struct {
 func NewUIThread(
 	frameChan <-chan image.Image,
 	configPath *string,
+	closeWindowPromise chan<- struct{},
 ) (*UIThread, chan *clientconfig.ClientConfig) {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("VaporPlay")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetVsyncEnabled(false)
+	ebiten.SetWindowClosingHandled(true)
 
-	game := &ebitenGame{}
+	game := &ebitenGame{
+		closeWindowPromise: closeWindowPromise,
+	}
 
 	startGamePromise := make(chan *clientconfig.ClientConfig)
 
@@ -72,6 +78,12 @@ func (u *UIThread) readConfig() {
 }
 
 func (g *ebitenGame) Update() error {
+	if ebiten.IsWindowBeingClosed() {
+		slog.Info("closing window")
+		g.closeWindowPromise <- struct{}{}
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}
 	return nil
 }
 
