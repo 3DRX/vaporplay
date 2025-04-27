@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"image"
 
 	"github.com/3DRX/vaporplay/client/vaporplay-native-client/peerconnection"
@@ -9,13 +10,21 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
+// TODO: add profile capability to native client
+// var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to file")
+var configPath = flag.String("config", "", "path to config file")
+
 func main() {
+	flag.Parse()
+	if *configPath == "" {
+		panic("config file path is required")
+	}
 	sdpChan := make(chan webrtc.SessionDescription)
 	sdpReplyChan := make(chan webrtc.SessionDescription)
 	candidateChan := make(chan webrtc.ICECandidateInit)
 	frameChan := make(chan image.Image, 120)
 
-	uiThread, startGamePromise := ui.NewUIThread(frameChan)
+	uiThread, startGamePromise := ui.NewUIThread(frameChan, configPath)
 	signalingThread := signaling.NewSignalingThread(
 		sdpChan,
 		sdpReplyChan,
@@ -29,7 +38,6 @@ func main() {
 			sdpChan,
 			sdpReplyChan,
 			candidateChan,
-			signalingThread.SignalCandidate,
 			frameChan,
 		)
 		go peerconnectionThread.Spin()

@@ -443,21 +443,21 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadev
 	if err != nil {
 		return nil, err
 	}
-	err = m.RegisterCodec(
-		webrtc.RTPCodecParameters{
-			RTPCodecCapability: webrtc.RTPCodecCapability{
-				MimeType:     webrtc.MimeTypeFlexFEC03,
-				ClockRate:    90000,
-				Channels:     0,
-				SDPFmtpLine:  "repair-window=10000000",
-				RTCPFeedback: nil,
-			},
-			PayloadType: 118,
-		},
-		webrtc.RTPCodecTypeVideo,
-	)
-	if err != nil {
-		return nil, err
-	}
+	// err = m.RegisterCodec(
+	// 	webrtc.RTPCodecParameters{
+	// 		RTPCodecCapability: webrtc.RTPCodecCapability{
+	// 			MimeType:     webrtc.MimeTypeFlexFEC03,
+	// 			ClockRate:    90000,
+	// 			Channels:     0,
+	// 			SDPFmtpLine:  "repair-window=10000000",
+	// 			RTCPFeedback: nil,
+	// 		},
+	// 		PayloadType: 118,
+	// 	},
+	// 	webrtc.RTPCodecTypeVideo,
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return codecselector, nil
 }

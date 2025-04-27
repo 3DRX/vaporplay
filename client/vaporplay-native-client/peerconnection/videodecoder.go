@@ -15,8 +15,9 @@ import (
 type VideoDecoder struct {
 	sampleBuilder *samplebuilder.SampleBuilder
 
-	codec        string
-	codecCreated bool
+	codec             string
+	codecCreated      bool
+	haveFramesDecodec bool
 
 	pkt         *astiav.Packet
 	frame       *astiav.Frame
@@ -32,24 +33,27 @@ func newVideoDecoder(codecConfig config.CodecConfig, frameChan chan<- image.Imag
 	switch codecConfig.Codec {
 	case "av1_nvenc":
 		return &VideoDecoder{
-			sampleBuilder: samplebuilder.New(maxLate, &codecs.AV1Depacketizer{}, sampleRate),
-			codecCreated:  false,
-			codec:         codecConfig.Codec,
-			frameChan:     frameChan,
+			sampleBuilder:     samplebuilder.New(maxLate, &codecs.AV1Depacketizer{}, sampleRate),
+			codecCreated:      false,
+			haveFramesDecodec: false,
+			codec:             codecConfig.Codec,
+			frameChan:         frameChan,
 		}
 	case "hevc_nvenc":
 		return &VideoDecoder{
-			sampleBuilder: samplebuilder.New(maxLate, &codecs.H265Packet{}, sampleRate),
-			codecCreated:  false,
-			codec:         codecConfig.Codec,
-			frameChan:     frameChan,
+			sampleBuilder:     samplebuilder.New(maxLate, &codecs.H265Packet{}, sampleRate),
+			codecCreated:      false,
+			haveFramesDecodec: false,
+			codec:             codecConfig.Codec,
+			frameChan:         frameChan,
 		}
 	case "h264_nvenc":
 		return &VideoDecoder{
-			sampleBuilder: samplebuilder.New(maxLate, &codecs.H264Packet{}, sampleRate),
-			codecCreated:  false,
-			codec:         codecConfig.Codec,
-			frameChan:     frameChan,
+			sampleBuilder:     samplebuilder.New(maxLate, &codecs.H264Packet{}, sampleRate),
+			codecCreated:      false,
+			haveFramesDecodec: false,
+			codec:             codecConfig.Codec,
+			frameChan:         frameChan,
 		}
 	default:
 		panic("unsupported codec")
@@ -73,7 +77,11 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 
 		s.pkt.FromData(sample.Data)
 		if err := s.decCodecCtx.SendPacket(s.pkt); err != nil {
-			slog.Error("sending packet failed", "error", err)
+			if s.haveFramesDecodec || !errors.Is(err, astiav.ErrInvaliddata) {
+				// It's common for the first few frames can't be decoded,
+				// printing error conditionally prevents polluting stderr.
+				slog.Error("sending packet failed", "error", err)
+			}
 			return
 		}
 
@@ -91,11 +99,12 @@ func (s *VideoDecoder) PushPacket(rtpPacket *rtp.Packet) {
 		dst := &image.YCbCr{}
 		s.frame.Data().ToImage(dst)
 		s.frameChan <- dst
+		s.haveFramesDecodec = true
 	}
 }
 
 func (s *VideoDecoder) Init() {
-	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelWarning))
+	astiav.SetLogLevel(astiav.LogLevel(astiav.LogLevelFatal))
 
 	s.pkt = astiav.AllocPacket()
 	s.frame = astiav.AllocFrame()
