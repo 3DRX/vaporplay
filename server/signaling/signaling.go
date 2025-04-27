@@ -27,6 +27,7 @@ type SignalingThread struct {
 	connecting          bool
 	httpServer          *http.Server
 	webuiDir            http.FileSystem
+	endWsPromise        chan<- struct{}
 }
 
 func NewSignalingThread(
@@ -36,6 +37,7 @@ func NewSignalingThread(
 	sendCandidateChan <-chan webrtc.ICECandidateInit,
 	recvCandidateChan chan<- webrtc.ICECandidateInit,
 	webuiDir http.FileSystem,
+	endWsPromise chan<- struct{},
 ) *SignalingThread {
 	return &SignalingThread{
 		cfg: cfg,
@@ -52,6 +54,7 @@ func NewSignalingThread(
 		recvCandidateChan:   recvCandidateChan,
 		connecting:          false,
 		webuiDir:            webuiDir,
+		endWsPromise:        endWsPromise,
 	}
 }
 
@@ -99,6 +102,10 @@ func (s *SignalingThread) Spin() <-chan *config.SessionConfig {
 		}
 		slog.Info("new receiver connected")
 		s.conn = conn
+		s.conn.SetCloseHandler(func(code int, text string) error {
+			s.endWsPromise <- struct{}{}
+			return nil
+		})
 		go s.handleRecvMessages()
 		go s.handleSendMessages()
 	}))
