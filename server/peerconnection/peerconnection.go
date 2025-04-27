@@ -56,6 +56,7 @@ type PeerConnectionThread struct {
 	cpuProfile        string
 	videoDriverLabel  string
 	sessionConfig     *config.SessionConfig
+	endWsPromise      <-chan struct{}
 }
 
 func NewPeerConnectionThread(
@@ -66,6 +67,7 @@ func NewPeerConnectionThread(
 	cfg *config.Config,
 	sessionConfig *config.SessionConfig,
 	cpuProfile string,
+	endWsPromise <-chan struct{},
 ) *PeerConnectionThread {
 	m := &webrtc.MediaEngine{}
 	i := &interceptor.Registry{}
@@ -195,6 +197,7 @@ func NewPeerConnectionThread(
 		cpuProfile:        cpuProfile,
 		videoDriverLabel:  videoDriverLabel,
 		sessionConfig:     sessionConfig,
+		endWsPromise:      endWsPromise,
 	}
 	return pc
 }
@@ -330,41 +333,48 @@ func (pc *PeerConnectionThread) Spin() {
 	remoteSDP := <-pc.recvSDPChan
 	slog.Info("Before calling SetRemoteDescription", "sender parameters", pc.peerConnection.GetTransceivers()[0].Sender().GetParameters())
 	pc.peerConnection.SetRemoteDescription(remoteSDP)
+
 	select {
+	case <-pc.endWsPromise:
+		pc.close()
 	case <-endSpinPromise:
-		// close all driver and encoder
-		if err := pc.gamepadControl.Close(); err != nil {
-			slog.Error("failed to close gamepad control", "error", err)
-			panic(err)
-		}
-		drivers := driver.GetManager().Query(func(d driver.Driver) bool {
-			if d.Info().Label == pc.videoDriverLabel {
-				return true
-			}
-			return false
-		})
-		if len(drivers) == 0 {
-			slog.Warn("no driver to close")
-		}
-		for _, d := range drivers {
-			if err := d.Close(); err != nil {
-				slog.Error("failed to close driver "+d.Info().Label, "error", err)
-				panic(err)
-			}
-		}
-		transceivers := pc.peerConnection.GetTransceivers()
-		for _, t := range transceivers {
-			if err := t.Stop(); err != nil {
-				slog.Error("failed to stop transceiver", "error", err)
-				panic(err)
-			}
-		}
-		if err := pc.peerConnection.GracefulClose(); err != nil {
-			slog.Error("failed to close peer connection", "error", err)
-			panic(err)
-		}
-		slog.Info("peer connection thread closed")
+		pc.close()
 	}
+}
+
+func (pc *PeerConnectionThread) close() {
+	// close all driver and encoder
+	if err := pc.gamepadControl.Close(); err != nil {
+		slog.Error("failed to close gamepad control", "error", err)
+		panic(err)
+	}
+	drivers := driver.GetManager().Query(func(d driver.Driver) bool {
+		if d.Info().Label == pc.videoDriverLabel {
+			return true
+		}
+		return false
+	})
+	if len(drivers) == 0 {
+		slog.Warn("no driver to close")
+	}
+	for _, d := range drivers {
+		if err := d.Close(); err != nil {
+			slog.Error("failed to close driver "+d.Info().Label, "error", err)
+			panic(err)
+		}
+	}
+	transceivers := pc.peerConnection.GetTransceivers()
+	for _, t := range transceivers {
+		if err := t.Stop(); err != nil {
+			slog.Error("failed to stop transceiver", "error", err)
+			panic(err)
+		}
+	}
+	if err := pc.peerConnection.GracefulClose(); err != nil {
+		slog.Error("failed to close peer connection", "error", err)
+		panic(err)
+	}
+	slog.Info("peer connection thread closed")
 }
 
 func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) (*mediadevices.CodecSelector, error) {

@@ -29,6 +29,7 @@ func main() {
 	recvSDPChan := make(chan webrtc.SessionDescription)
 	sendCandidateChan := make(chan webrtc.ICECandidateInit)
 	recvCandidateChan := make(chan webrtc.ICECandidateInit)
+	endWsPromise := make(chan struct{})
 
 	subFS, err := fs.Sub(embedFS, "webui")
 	if err != nil {
@@ -42,6 +43,7 @@ func main() {
 		sendCandidateChan,
 		recvCandidateChan,
 		http.FS(subFS),
+		endWsPromise,
 	)
 	haveReceiverPromise := signalingThread.Spin()
 	sessionConfig := <-haveReceiverPromise
@@ -54,6 +56,7 @@ func main() {
 		cfg,
 		sessionConfig,
 		*cpuProfile,
+		endWsPromise,
 	)
 	peerConnectionThread.Spin()
 

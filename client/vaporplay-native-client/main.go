@@ -23,8 +23,13 @@ func main() {
 	sdpReplyChan := make(chan webrtc.SessionDescription)
 	candidateChan := make(chan webrtc.ICECandidateInit)
 	frameChan := make(chan image.Image, 120)
+	closeWindowPromise := make(chan struct{})
 
-	uiThread, startGamePromise := ui.NewUIThread(frameChan, configPath)
+	uiThread, startGamePromise := ui.NewUIThread(
+		frameChan,
+		configPath,
+		closeWindowPromise,
+	)
 	signalingThread := signaling.NewSignalingThread(
 		sdpChan,
 		sdpReplyChan,
@@ -39,6 +44,7 @@ func main() {
 			sdpReplyChan,
 			candidateChan,
 			frameChan,
+			closeWindowPromise,
 		)
 		go peerconnectionThread.Spin()
 	}()
