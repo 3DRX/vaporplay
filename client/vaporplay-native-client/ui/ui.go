@@ -9,13 +9,13 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
-	"github.com/3DRX/vaporplay/config"
 )
 
 type UIThread struct {
 	frameChan        <-chan image.Image
 	startGamePromise chan *clientconfig.ClientConfig
 	game             *ebitenGame
+	configPath       *string
 }
 
 type ebitenGame struct {
@@ -24,7 +24,10 @@ type ebitenGame struct {
 	lock sync.Mutex
 }
 
-func NewUIThread(frameChan <-chan image.Image) (*UIThread, chan *clientconfig.ClientConfig) {
+func NewUIThread(
+	frameChan <-chan image.Image,
+	configPath *string,
+) (*UIThread, chan *clientconfig.ClientConfig) {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("VaporPlay")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
@@ -38,6 +41,7 @@ func NewUIThread(frameChan <-chan image.Image) (*UIThread, chan *clientconfig.Cl
 		frameChan:        frameChan,
 		startGamePromise: startGamePromise,
 		game:             game,
+		configPath:       configPath,
 	}, startGamePromise
 }
 
@@ -60,30 +64,9 @@ func (u *UIThread) Spin() {
 }
 
 func (u *UIThread) readConfig() {
-	// wait for 2 seconds, mock user input
-	time.Sleep(2 * time.Second)
-
-	cfg := &clientconfig.ClientConfig{
-		Addr: "192.168.1.35:8080",
-		SessionConfig: config.SessionConfig{
-			GameConfig: config.GameConfig{
-				GameId:          "588650",
-				GameWindowName:  "Dead Cells",
-				GameDisplayName: "Dead Cells",
-				GameIcon:        "",
-				EndGameCommands: []config.KillProcessCommandConfig{{
-					Flags:       []string{},
-					ProcessName: "deadcells",
-				}},
-			},
-			CodecConfig: config.CodecConfig{
-				Codec:          "h264_nvenc",
-				InitialBitrate: 10_000_000,
-				MaxBitrate:     20_000_000,
-				FrameRate:      60,
-			},
-		},
-	}
+	// wait 1 second, mock user input
+	time.Sleep(1 * time.Second)
+	cfg := clientconfig.LoadClientConfig(u.configPath)
 	slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
 	u.startGamePromise <- cfg
 }
