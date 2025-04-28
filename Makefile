@@ -7,11 +7,12 @@ CGO_CFLAGS := -I$(CURDIR)/gamecapture -I$(CURDIR)/tmp/$(version)/include/
 CGO_LDFLAGS := -L$(CURDIR)/gamecapture -L$(CURDIR)/tmp/$(version)/lib/
 PKG_CONFIG_PATH := $(CURDIR)/tmp/$(version)/lib/pkgconfig
 configure := --enable-libx264 --enable-libx265 --enable-decoder=hevc --enable-gpl --enable-nonfree --enable-nvenc
-configure-client-only := --enable-libx264 --enable-libx265 --enable-libaom --enable-gpl --enable-nonfree
+configure-client-only := --enable-libx264 --enable-gpl --enable-nonfree
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 	CGO_CFLAGS += -I/usr/local/cuda/include
 	CGO_LDFLAGS += -L/usr/local/cuda/lib64
+	configure-client-only +=  --enable-libx265 --enable-libaom
 else ifeq ($(UNAME_S),Darwin)
 	CGO_LDFLAGS += -ld_classic
 else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
