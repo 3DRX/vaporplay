@@ -250,6 +250,8 @@ func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 		return nil, func() {}, err
 	}
 
+	// TODO: start encoding
+
 	// Send frame to encoder
 	if err := e.codecCtx.SendFrame(e.hwFrame); err != nil {
 		return nil, func() {}, fmt.Errorf("failed to send frame: %w", err)
@@ -264,6 +266,8 @@ func (e *hardwareEncoder) Read() ([]byte, func(), error) {
 		}
 		break
 	}
+
+	// TODO: end encoding
 
 	data := make([]byte, e.packet.Size())
 	copy(data, e.packet.Data())
