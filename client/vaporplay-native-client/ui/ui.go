@@ -1,12 +1,16 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"log/slog"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/ebitenui/ebitenui"
+	eimage "github.com/ebitenui/ebitenui/image"
+	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
@@ -22,6 +26,7 @@ type UIThread struct {
 type ebitenGame struct {
 	frame              *ebiten.Image
 	closeWindowPromise chan<- struct{}
+	ui                 *ebitenui.UI
 
 	lock sync.Mutex
 }
@@ -37,8 +42,50 @@ func NewUIThread(
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetWindowClosingHandled(true)
 
+	face, _ := loadFont(22)
+	root := widget.NewContainer(
+		widget.ContainerOpts.Layout(
+			widget.NewRowLayout(
+				widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+				widget.RowLayoutOpts.Spacing(20),
+				widget.RowLayoutOpts.Padding(widget.NewInsetsSimple(20)),
+			),
+		),
+	)
+	serverInput := widget.NewTextInput(
+		widget.TextInputOpts.Placeholder("Server URL"),
+		widget.TextInputOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+		),
+		widget.TextInputOpts.Image(&widget.TextInputImage{
+			Idle:     eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+			Disabled: eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+		}),
+		widget.TextInputOpts.Face(face),
+		widget.TextInputOpts.Color(&widget.TextInputColor{
+			Idle:          hexToColor(textIdleColor),
+			Disabled:      hexToColor(textDisabledColor),
+			Caret:         hexToColor(textInputCaretColor),
+			DisabledCaret: hexToColor(textInputDisabledCaretColor),
+		}),
+		widget.TextInputOpts.Padding(widget.NewInsetsSimple(5)),
+		widget.TextInputOpts.CaretOpts(
+			widget.CaretOpts.Size(face, 2),
+		),
+		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
+			fmt.Println("Server URL: ", args.InputText)
+		}),
+	)
+	root.AddChild(serverInput)
+
 	game := &ebitenGame{
 		closeWindowPromise: closeWindowPromise,
+		ui: &ebitenui.UI{
+			Container: root,
+		},
 	}
 
 	startGamePromise := make(chan *clientconfig.ClientConfig)
@@ -71,18 +118,24 @@ func (u *UIThread) Spin() {
 
 func (u *UIThread) readConfig() {
 	// wait 1 second, mock user input
-	time.Sleep(1 * time.Second)
-	cfg := clientconfig.LoadClientConfig(u.configPath)
-	slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
-	u.startGamePromise <- cfg
+	// time.Sleep(1 * time.Second)
+	// cfg := clientconfig.LoadClientConfig(u.configPath)
+	// slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
+	// u.startGamePromise <- cfg
 }
 
 func (g *ebitenGame) Update() error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	if ebiten.IsWindowBeingClosed() {
 		slog.Info("closing window")
 		g.closeWindowPromise <- struct{}{}
 		time.Sleep(1 * time.Second)
 		os.Exit(0)
+	}
+	if g.frame == nil {
+		g.ui.Update()
 	}
 	return nil
 }
@@ -92,6 +145,9 @@ func (g *ebitenGame) Draw(screen *ebiten.Image) {
 	defer g.lock.Unlock()
 
 	if g.frame == nil {
+		// draw connection form
+		screen.Fill(image.Black)
+		g.ui.Draw(screen)
 		return
 	}
 

@@ -23,7 +23,7 @@ func main() {
 	sdpReplyChan := make(chan webrtc.SessionDescription)
 	candidateChan := make(chan webrtc.ICECandidateInit)
 	frameChan := make(chan image.Image, 120)
-	closeWindowPromise := make(chan struct{})
+	closeWindowPromise := make(chan struct{}, 1)
 
 	uiThread, startGamePromise := ui.NewUIThread(
 		frameChan,
