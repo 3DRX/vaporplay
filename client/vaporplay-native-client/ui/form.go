@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 
 	"github.com/ebitenui/ebitenui"
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -10,7 +11,14 @@ import (
 )
 
 func loadUI() *ebitenui.UI {
-	face, _ := loadFont(22)
+	face, err := loadFont(22)
+	if err != nil {
+		panic(err)
+	}
+	smallFace, err := loadFont(20)
+	if err != nil {
+		panic(err)
+	}
 	root := widget.NewContainer(
 		widget.ContainerOpts.Layout(
 			widget.NewRowLayout(
@@ -273,6 +281,116 @@ func loadUI() *ebitenui.UI {
 	)
 	fpsComboBox.SetSelectedEntry(entries[0])
 	codecCfgContainer.AddChild(fpsComboBox)
+	initRateLabel := widget.NewText(
+		widget.TextOpts.Text("Initial Rate (Mbps)", smallFace, hexToColor(labelIdleColor)),
+		widget.TextOpts.Position(widget.TextPositionCenter, widget.TextPositionCenter),
+		widget.TextOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+			}),
+		),
+	)
+	codecCfgContainer.AddChild(initRateLabel)
+	lastInitRateInputText := ""
+	initRateInput := widget.NewTextInput(
+		widget.TextInputOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+			widget.WidgetOpts.MinSize(150, 0),
+		),
+		widget.TextInputOpts.Image(&widget.TextInputImage{
+			Idle:     eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+			Disabled: eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+		}),
+		widget.TextInputOpts.Face(face),
+		widget.TextInputOpts.Color(&widget.TextInputColor{
+			Idle:          hexToColor(textIdleColor),
+			Disabled:      hexToColor(textDisabledColor),
+			Caret:         hexToColor(textInputCaretColor),
+			DisabledCaret: hexToColor(textInputDisabledCaretColor),
+		}),
+		widget.TextInputOpts.Padding(widget.NewInsetsSimple(5)),
+		widget.TextInputOpts.CaretOpts(
+			widget.CaretOpts.Size(face, 2),
+		),
+		widget.TextInputOpts.ChangedHandler(func(args *widget.TextInputChangedEventArgs) {
+			// try to parse input text as number or empty string,
+			// if not, restore to last state
+			if args.InputText == "" {
+				lastInitRateInputText = ""
+				return
+			}
+			a, err := strconv.Atoi(args.InputText)
+			if err != nil || a < 0 {
+				args.TextInput.SetText(lastInitRateInputText)
+				return
+			}
+			lastInitRateInputText = args.InputText
+			args.TextInput.Submit()
+		}),
+		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
+			fmt.Println("Initial Rate: ", args.InputText)
+		}),
+	)
+	initRateInput.SetText("5")
+	codecCfgContainer.AddChild(initRateInput)
+	maxRateLabel := widget.NewText(
+		widget.TextOpts.Text("Max Rate (Mbps)", smallFace, hexToColor(labelIdleColor)),
+		widget.TextOpts.Position(widget.TextPositionCenter, widget.TextPositionCenter),
+		widget.TextOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+			}),
+		),
+	)
+	codecCfgContainer.AddChild(maxRateLabel)
+	lastMaxRateInputText := ""
+	maxRateInput := widget.NewTextInput(
+		widget.TextInputOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+			widget.WidgetOpts.MinSize(150, 0),
+		),
+		widget.TextInputOpts.Image(&widget.TextInputImage{
+			Idle:     eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+			Disabled: eimage.NewNineSliceColor(hexToColor(backgroundColor)),
+		}),
+		widget.TextInputOpts.Face(face),
+		widget.TextInputOpts.Color(&widget.TextInputColor{
+			Idle:          hexToColor(textIdleColor),
+			Disabled:      hexToColor(textDisabledColor),
+			Caret:         hexToColor(textInputCaretColor),
+			DisabledCaret: hexToColor(textInputDisabledCaretColor),
+		}),
+		widget.TextInputOpts.Padding(widget.NewInsetsSimple(5)),
+		widget.TextInputOpts.CaretOpts(
+			widget.CaretOpts.Size(face, 2),
+		),
+		widget.TextInputOpts.ChangedHandler(func(args *widget.TextInputChangedEventArgs) {
+			// try to parse input text as number or empty string,
+			// if not, restore to last state
+			if args.InputText == "" {
+				lastInitRateInputText = ""
+				return
+			}
+			a, err := strconv.Atoi(args.InputText)
+			if err != nil || a < 0 {
+				args.TextInput.SetText(lastMaxRateInputText)
+				return
+			}
+			lastMaxRateInputText = args.InputText
+			args.TextInput.Submit()
+		}),
+		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
+			fmt.Println("Initial Rate: ", args.InputText)
+		}),
+	)
+	maxRateInput.SetText("30")
+	codecCfgContainer.AddChild(maxRateInput)
 	root.AddChild(codecCfgContainer)
 	ui := &ebitenui.UI{
 		Container: root,
