@@ -24,6 +24,7 @@ func LoadClientConfig(configPath *string) (*ClientConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	stat, err := f.Stat()
 	if err != nil {
 		return nil, err
@@ -38,10 +39,6 @@ func LoadClientConfig(configPath *string) (*ClientConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = f.Close()
-	if err != nil {
-		return nil, err
-	}
 	return cfg, nil
 }
 
@@ -52,6 +49,7 @@ func SaveClientConfig(configPath string, cfg *ClientConfig) error {
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			return err
@@ -60,26 +58,18 @@ func SaveClientConfig(configPath string, cfg *ClientConfig) error {
 		if err != nil || n != len(b) {
 			return err
 		}
-		err = f.Close()
-		if err != nil {
-			return err
-		}
 	} else {
-		// open file in write mode (clear original content)
 		f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			return err
 		}
 		n, err := f.Write(b)
 		if err != nil || n != len(b) {
-			return err
-		}
-		err = f.Close()
-		if err != nil {
 			return err
 		}
 	}
