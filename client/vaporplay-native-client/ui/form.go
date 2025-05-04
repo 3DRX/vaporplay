@@ -5,13 +5,15 @@ import (
 	"image/color"
 	"strconv"
 
+	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 )
 
-func loadUI() *ebitenui.UI {
+func loadUI(configPath string) *ebitenui.UI {
+	cfg := useClientConfig(configPath)
 	face, err := loadFont(22)
 	if err != nil {
 		panic(err)
@@ -61,10 +63,13 @@ func loadUI() *ebitenui.UI {
 		widget.TextInputOpts.CaretOpts(
 			widget.CaretOpts.Size(face, 2),
 		),
-		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
-			fmt.Println("Server URL: ", args.InputText)
+		widget.TextInputOpts.ChangedHandler(func(args *widget.TextInputChangedEventArgs) {
+			setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+				cc.Addr = args.InputText
+			})
 		}),
 	)
+	serverInput.SetText(cfg.Addr)
 	root.AddChild(serverInput)
 	codecCfgContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(

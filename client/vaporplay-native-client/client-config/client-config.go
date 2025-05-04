@@ -16,28 +16,61 @@ type ClientConfig struct {
 }
 
 // load client config from configPath
-func LoadClientConfig(configPath *string) *ClientConfig {
+func LoadClientConfig(configPath *string) (*ClientConfig, error) {
 	if _, err := os.Stat(*configPath); errors.Is(err, os.ErrNotExist) {
-		panic(*configPath + " not found, using default config")
+		return nil, err
 	}
 	f, err := os.Open(*configPath)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer f.Close()
 	stat, err := f.Stat()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bf := make([]byte, stat.Size())
 	_, err = bufio.NewReader(f).Read(bf)
 	if err != nil && err != io.EOF {
-		panic(err)
+		return nil, err
 	}
 	cfg := &ClientConfig{}
 	err = json.Unmarshal(bf, cfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return cfg
+	return cfg, nil
+}
+
+func SaveClientConfig(configPath string, cfg *ClientConfig) error {
+	if _, err := os.Stat(configPath); errors.Is(err, os.ErrNotExist) {
+		// create file
+		f, err := os.Create(configPath)
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+		n, err := f.Write(b)
+		if err != nil || n != len(b) {
+			return err
+		}
+	} else {
+		// open file in write mode (clear original content)
+		f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+		n, err := f.Write(b)
+		if err != nil || n != len(b) {
+			return err
+		}
+	}
+	return nil
 }

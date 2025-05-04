@@ -12,7 +12,7 @@ import (
 
 // TODO: add profile capability to native client
 // var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to file")
-var configPath = flag.String("config", "", "path to config file")
+var configPath = flag.String("config", "client_config.json", "path to config file")
 
 func main() {
 	flag.Parse()

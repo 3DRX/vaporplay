@@ -46,7 +46,7 @@ func NewUIThread(
 
 	game := &ebitenGame{
 		closeWindowPromise: closeWindowPromise,
-		ui:                 loadUI(),
+		ui:                 loadUI(*configPath),
 	}
 
 	startGamePromise := make(chan *clientconfig.ClientConfig)
@@ -73,14 +73,6 @@ func (u *UIThread) Spin() {
 	if err != nil {
 		slog.Error("ebiten error", "error", err)
 	}
-}
-
-func (u *UIThread) readConfig() {
-	// wait 1 second, mock user input
-	// time.Sleep(1 * time.Second)
-	// cfg := clientconfig.LoadClientConfig(u.configPath)
-	// slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
-	// u.startGamePromise <- cfg
 }
 
 func (g *ebitenGame) Update() error {
