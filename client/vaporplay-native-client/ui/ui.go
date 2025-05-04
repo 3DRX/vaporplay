@@ -29,8 +29,9 @@ type ebitenGame struct {
 }
 
 type ListEntry struct {
-	id   int
-	name string
+	id    int
+	name  string
+	value string
 }
 
 func NewUIThread(

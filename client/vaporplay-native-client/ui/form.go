@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"log/slog"
 	"strconv"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
@@ -87,20 +88,24 @@ func loadUI(configPath string) *ebitenui.UI {
 	}
 	ent := []ListEntry{
 		{
-			id:   0,
-			name: "H.264 NVENC",
+			id:    0,
+			name:  "H.264 NVENC",
+			value: "h264_nvenc",
 		},
 		{
-			id:   1,
-			name: "H.265 NVENC",
+			id:    1,
+			name:  "H.265 NVENC",
+			value: "hevc_nvenc",
 		},
 		{
-			id:   2,
-			name: "AV1 NVENC",
+			id:    2,
+			name:  "AV1 NVENC",
+			value: "av1_nvenc",
 		},
 		{
-			id:   3,
-			name: "x264",
+			id:    3,
+			name:  "x264",
+			value: "libx264",
 		},
 	}
 	entries := make([]any, 0, len(ent))
@@ -182,25 +187,44 @@ func loadUI(configPath string) *ebitenui.UI {
 		//Callback when a new entry is selected
 		widget.ListComboButtonOpts.EntrySelectedHandler(func(args *widget.ListComboButtonEntrySelectedEventArgs) {
 			fmt.Println("Selected Codec: ", args.Entry)
+			listEntry, ok := args.Entry.(ListEntry)
+			if !ok {
+				return
+			}
+			setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+				cc.SessionConfig.CodecConfig.Codec = listEntry.value
+			})
 		}),
 	)
-	codecComboBox.SetSelectedEntry(entries[0])
+	switch cfg.SessionConfig.CodecConfig.Codec {
+	case "h264_nvenc":
+		codecComboBox.SetSelectedEntry(entries[0])
+	case "hevc_nvenc":
+		codecComboBox.SetSelectedEntry(entries[1])
+	case "av1_nvenc":
+		codecComboBox.SetSelectedEntry(entries[2])
+	case "libx264":
+		codecComboBox.SetSelectedEntry(entries[3])
+	default:
+		slog.Warn("unknown codec: " + cfg.SessionConfig.CodecConfig.Codec)
+		codecComboBox.SetSelectedEntry(entries[0])
+	}
 	codecCfgContainer.AddChild(codecComboBox)
 	ent = []ListEntry{
 		{
-			id:   0,
+			id:   30,
 			name: "30 FPS",
 		},
 		{
-			id:   1,
+			id:   60,
 			name: "60 FPS",
 		},
 		{
-			id:   2,
+			id:   90,
 			name: "90 FPS",
 		},
 		{
-			id:   3,
+			id:   120,
 			name: "120 FPS",
 		},
 	}
@@ -283,9 +307,23 @@ func loadUI(configPath string) *ebitenui.UI {
 		//Callback when a new entry is selected
 		widget.ListComboButtonOpts.EntrySelectedHandler(func(args *widget.ListComboButtonEntrySelectedEventArgs) {
 			fmt.Println("Selected FPS: ", args.Entry)
+			listEntry, ok := args.Entry.(ListEntry)
+			if !ok {
+				return
+			}
+			setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+				cc.SessionConfig.CodecConfig.FrameRate = float32(listEntry.id)
+			})
 		}),
 	)
-	fpsComboBox.SetSelectedEntry(entries[0])
+	se := entries[1]
+	for i, v := range ent {
+		if v.id == int(cfg.SessionConfig.CodecConfig.FrameRate) {
+			se = entries[i]
+			break
+		}
+	}
+	fpsComboBox.SetSelectedEntry(se)
 	codecCfgContainer.AddChild(fpsComboBox)
 	initRateLabel := widget.NewText(
 		widget.TextOpts.Text("Initial Rate (Mbps)", smallFace, hexToColor(labelIdleColor)),
@@ -334,13 +372,12 @@ func loadUI(configPath string) *ebitenui.UI {
 				return
 			}
 			lastInitRateInputText = args.InputText
-			args.TextInput.Submit()
-		}),
-		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
-			fmt.Println("Initial Rate: ", args.InputText)
+			setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+				cc.SessionConfig.CodecConfig.InitialBitrate = a * 1_000_000
+			})
 		}),
 	)
-	initRateInput.SetText("5")
+	initRateInput.SetText(fmt.Sprintf("%d", cfg.SessionConfig.CodecConfig.InitialBitrate/1_000_000))
 	codecCfgContainer.AddChild(initRateInput)
 	maxRateLabel := widget.NewText(
 		widget.TextOpts.Text("Max Rate (Mbps)", smallFace, hexToColor(labelIdleColor)),
@@ -389,13 +426,12 @@ func loadUI(configPath string) *ebitenui.UI {
 				return
 			}
 			lastMaxRateInputText = args.InputText
-			args.TextInput.Submit()
-		}),
-		widget.TextInputOpts.SubmitHandler(func(args *widget.TextInputChangedEventArgs) {
-			fmt.Println("Initial Rate: ", args.InputText)
+			setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+				cc.SessionConfig.CodecConfig.MaxBitrate = a * 1_000_000
+			})
 		}),
 	)
-	maxRateInput.SetText("30")
+	maxRateInput.SetText(fmt.Sprintf("%d", cfg.SessionConfig.CodecConfig.MaxBitrate/1_000_000))
 	codecCfgContainer.AddChild(maxRateInput)
 	root.AddChild(codecCfgContainer)
 	ent = []ListEntry{
@@ -552,7 +588,7 @@ func loadUI(configPath string) *ebitenui.UI {
 		// specify the images to use.
 		widget.ButtonOpts.Image(loadButtonImage()),
 		// specify the button's text, the font face, and the color.
-		widget.ButtonOpts.Text("Submit", face, &widget.ButtonTextColor{
+		widget.ButtonOpts.Text("Start !", face, &widget.ButtonTextColor{
 			Idle:     hexToColor(textIdleColor),
 			Disabled: hexToColor(textDisabledColor),
 		}),
@@ -577,7 +613,7 @@ func loadUI(configPath string) *ebitenui.UI {
 		}),
 		// add a handler that reacts to clicking the button.
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			println("Submit button clicked")
+			slog.Info("submit", "client config", useClientConfig(configPath))
 		}),
 		// Indicate that this button should not be submitted when enter or space are pressed
 		widget.ButtonOpts.DisableDefaultKeys(),
