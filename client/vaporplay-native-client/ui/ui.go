@@ -83,7 +83,7 @@ func (g *ebitenGame) Update() error {
 	if ebiten.IsWindowBeingClosed() {
 		slog.Info("closing window")
 		g.closeWindowPromise <- struct{}{}
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		os.Exit(0)
 	}
 	if g.frame == nil {
