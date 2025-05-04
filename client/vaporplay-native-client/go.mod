@@ -7,7 +7,7 @@ replace github.com/3DRX/vaporplay => ../../
 require (
 	github.com/3DRX/vaporplay v0.0.0-00010101000000-000000000000
 	github.com/asticode/go-astiav v0.36.0
-	github.com/ebitenui/ebitenui v0.6.2
+	github.com/ebitenui/ebitenui v0.6.3-0.20250502004721-72bb4621cbf1
 	github.com/gorilla/websocket v1.5.3
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
 	github.com/pion/interceptor v0.1.37

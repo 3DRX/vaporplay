@@ -69,8 +69,6 @@ func (u *UIThread) Spin() {
 		}
 	}()
 
-	go u.readConfig()
-
 	err := ebiten.RunGame(u.game)
 	if err != nil {
 		slog.Error("ebiten error", "error", err)
@@ -107,7 +105,6 @@ func (g *ebitenGame) Draw(screen *ebiten.Image) {
 
 	if g.frame == nil {
 		// draw connection form
-		screen.Fill(image.Black)
 		g.ui.Draw(screen)
 		return
 	}
