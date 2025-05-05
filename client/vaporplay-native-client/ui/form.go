@@ -5,15 +5,27 @@ import (
 	"image/color"
 	"log/slog"
 	"strconv"
+	"time"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
+	"github.com/3DRX/vaporplay/config"
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 )
 
-func loadUI(configPath string) *ebitenui.UI {
+type ListEntry struct {
+	id    int
+	name  string
+	value string
+}
+
+type GameListEntry struct {
+	id string
+}
+
+func loadUI(configPath string, startGamePromise chan *clientconfig.ClientConfig) *ebitenui.UI {
 	cfg := useClientConfig(configPath)
 	face, err := loadFont(22)
 	if err != nil {
@@ -434,104 +446,7 @@ func loadUI(configPath string) *ebitenui.UI {
 	maxRateInput.SetText(fmt.Sprintf("%d", cfg.SessionConfig.CodecConfig.MaxBitrate/1_000_000))
 	codecCfgContainer.AddChild(maxRateInput)
 	root.AddChild(codecCfgContainer)
-	ent = []ListEntry{
-		{
-			id:   0,
-			name: "game 1",
-		},
-		{
-			id:   1,
-			name: "game 2",
-		},
-	}
-	entries = make([]any, 0, len(ent))
-	for _, e := range ent {
-		entries = append(entries, e)
-	}
-	gameComboBox := widget.NewListComboButton(
-		widget.ListComboButtonOpts.SelectComboButtonOpts(
-			widget.SelectComboButtonOpts.ComboButtonOpts(
-				//Set the max height of the dropdown list
-				widget.ComboButtonOpts.MaxContentHeight(150),
-				//Set the parameters for the primary displayed button
-				widget.ComboButtonOpts.ButtonOpts(
-					widget.ButtonOpts.Image(btnImg),
-					widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
-					widget.ButtonOpts.Text("", face, &widget.ButtonTextColor{
-						Idle:     hexToColor(textIdleColor),
-						Disabled: hexToColor(textDisabledColor),
-					}),
-					widget.ButtonOpts.WidgetOpts(
-						widget.WidgetOpts.MinSize(500, 0),
-						widget.WidgetOpts.LayoutData(widget.RowLayoutData{
-							Position: widget.RowLayoutPositionCenter,
-							Stretch:  false,
-						})),
-				),
-			),
-		),
-		widget.ListComboButtonOpts.ListOpts(
-			//Set how wide the dropdown list should be
-			widget.ListOpts.ContainerOpts(
-				widget.ContainerOpts.WidgetOpts(
-					widget.WidgetOpts.MinSize(500, 0),
-				),
-			),
-			//Set the entries in the list
-			widget.ListOpts.Entries(entries),
-			widget.ListOpts.ScrollContainerOpts(
-				//Set the background images/color for the dropdown list
-				widget.ScrollContainerOpts.Image(&widget.ScrollContainerImage{
-					Idle:     eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
-					Disabled: eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
-					Mask:     eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
-				}),
-			),
-			widget.ListOpts.SliderOpts(
-				//Set the background images/color for the background of the slider track
-				widget.SliderOpts.Images(&widget.SliderTrackImage{
-					Idle:  eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
-					Hover: eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
-				}, btnImg),
-				widget.SliderOpts.MinHandleSize(5),
-				//Set how wide the track should be
-				widget.SliderOpts.TrackPadding(widget.NewInsetsSimple(2))),
-			//Set the font for the list options
-			widget.ListOpts.EntryFontFace(face),
-			//Set the colors for the list
-			widget.ListOpts.EntryColor(&widget.ListEntryColor{
-				Selected:                   color.NRGBA{254, 255, 255, 255},             //Foreground color for the unfocused selected entry
-				Unselected:                 color.NRGBA{254, 255, 255, 255},             //Foreground color for the unfocused unselected entry
-				SelectedBackground:         color.NRGBA{R: 130, G: 130, B: 200, A: 255}, //Background color for the unfocused selected entry
-				SelectedFocusedBackground:  color.NRGBA{R: 130, G: 130, B: 170, A: 255}, //Background color for the focused selected entry
-				FocusedBackground:          color.NRGBA{R: 170, G: 170, B: 180, A: 255}, //Background color for the focused unselected entry
-				DisabledUnselected:         color.NRGBA{100, 100, 100, 255},             //Foreground color for the disabled unselected entry
-				DisabledSelected:           color.NRGBA{100, 100, 100, 255},             //Foreground color for the disabled selected entry
-				DisabledSelectedBackground: color.NRGBA{100, 100, 100, 255},             //Background color for the disabled selected entry
-			}),
-			//Padding for each entry
-			widget.ListOpts.EntryTextPadding(widget.NewInsetsSimple(5)),
-		),
-		//Define how the entry is displayed
-		widget.ListComboButtonOpts.EntryLabelFunc(
-			func(e any) string {
-				//Button Label function
-				return e.(ListEntry).name
-			},
-			func(e any) string {
-				//List Label function
-				return e.(ListEntry).name
-			}),
-		//Callback when a new entry is selected
-		widget.ListComboButtonOpts.EntrySelectedHandler(func(args *widget.ListComboButtonEntrySelectedEventArgs) {
-			fmt.Println("Selected Codec: ", args.Entry)
-		}),
-	)
-	// hide by default until form enters second stage
-	gameComboBox.GetWidget().Visibility = widget.Visibility_Hide
-	root.AddChild(gameComboBox)
-	var nextButton, submitButton *widget.Button
-	nextButton = widget.NewButton(
+	nextButton := widget.NewButton(
 		// set general widget options
 		widget.ButtonOpts.WidgetOpts(
 			// instruct the container's anchor layout to center the button both horizontally and vertically.
@@ -568,59 +483,156 @@ func loadUI(configPath string) *ebitenui.UI {
 		}),
 		// add a handler that reacts to clicking the button.
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			gameComboBox.GetWidget().Visibility = widget.Visibility_Show
 			args.Button.GetWidget().Visibility = widget.Visibility_Hide
-			submitButton.GetWidget().Visibility = widget.Visibility_Show
-			println("Next button clicked")
+
+			// fetch game data from server
+			time.Sleep(1 * time.Second)
+			gameconfigs, err := fetchGameData(configPath)
+			if err != nil {
+				slog.Error("failed to fetch game data from server", "error", err)
+				// go back to previous state
+				args.Button.GetWidget().Visibility = widget.Visibility_Show
+				return
+			}
+			gameconfigsMap := make(map[string]config.GameConfig)
+			entries = make([]any, 0, len(ent))
+			for i := range *gameconfigs {
+				e := (*gameconfigs)[i]
+				gameconfigsMap[e.GameId] = e
+				entries = append(entries, GameListEntry{
+					id: e.GameId,
+				})
+			}
+			gameComboBox := widget.NewListComboButton(
+				widget.ListComboButtonOpts.SelectComboButtonOpts(
+					widget.SelectComboButtonOpts.ComboButtonOpts(
+						//Set the max height of the dropdown list
+						widget.ComboButtonOpts.MaxContentHeight(150),
+						//Set the parameters for the primary displayed button
+						widget.ComboButtonOpts.ButtonOpts(
+							widget.ButtonOpts.Image(btnImg),
+							widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
+							widget.ButtonOpts.Text("", face, &widget.ButtonTextColor{
+								Idle:     hexToColor(textIdleColor),
+								Disabled: hexToColor(textDisabledColor),
+							}),
+							widget.ButtonOpts.WidgetOpts(
+								widget.WidgetOpts.MinSize(500, 0),
+								widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+									Position: widget.RowLayoutPositionCenter,
+									Stretch:  false,
+								})),
+						),
+					),
+				),
+				widget.ListComboButtonOpts.ListOpts(
+					//Set how wide the dropdown list should be
+					widget.ListOpts.ContainerOpts(
+						widget.ContainerOpts.WidgetOpts(
+							widget.WidgetOpts.MinSize(500, 0),
+						),
+					),
+					//Set the entries in the list
+					widget.ListOpts.Entries(entries),
+					widget.ListOpts.ScrollContainerOpts(
+						//Set the background images/color for the dropdown list
+						widget.ScrollContainerOpts.Image(&widget.ScrollContainerImage{
+							Idle:     eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+							Disabled: eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+							Mask:     eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+						}),
+					),
+					widget.ListOpts.SliderOpts(
+						//Set the background images/color for the background of the slider track
+						widget.SliderOpts.Images(&widget.SliderTrackImage{
+							Idle:  eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+							Hover: eimage.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+						}, btnImg),
+						widget.SliderOpts.MinHandleSize(5),
+						//Set how wide the track should be
+						widget.SliderOpts.TrackPadding(widget.NewInsetsSimple(2))),
+					//Set the font for the list options
+					widget.ListOpts.EntryFontFace(face),
+					//Set the colors for the list
+					widget.ListOpts.EntryColor(&widget.ListEntryColor{
+						Selected:                   color.NRGBA{254, 255, 255, 255},             //Foreground color for the unfocused selected entry
+						Unselected:                 color.NRGBA{254, 255, 255, 255},             //Foreground color for the unfocused unselected entry
+						SelectedBackground:         color.NRGBA{R: 130, G: 130, B: 200, A: 255}, //Background color for the unfocused selected entry
+						SelectedFocusedBackground:  color.NRGBA{R: 130, G: 130, B: 170, A: 255}, //Background color for the focused selected entry
+						FocusedBackground:          color.NRGBA{R: 170, G: 170, B: 180, A: 255}, //Background color for the focused unselected entry
+						DisabledUnselected:         color.NRGBA{100, 100, 100, 255},             //Foreground color for the disabled unselected entry
+						DisabledSelected:           color.NRGBA{100, 100, 100, 255},             //Foreground color for the disabled selected entry
+						DisabledSelectedBackground: color.NRGBA{100, 100, 100, 255},             //Background color for the disabled selected entry
+					}),
+					//Padding for each entry
+					widget.ListOpts.EntryTextPadding(widget.NewInsetsSimple(5)),
+				),
+				//Define how the entry is displayed
+				widget.ListComboButtonOpts.EntryLabelFunc(
+					func(e any) string {
+						//Button Label function
+						return gameconfigsMap[e.(GameListEntry).id].GameDisplayName
+					},
+					func(e any) string {
+						//List Label function
+						return gameconfigsMap[e.(GameListEntry).id].GameDisplayName
+					}),
+				//Callback when a new entry is selected
+				widget.ListComboButtonOpts.EntrySelectedHandler(func(args *widget.ListComboButtonEntrySelectedEventArgs) {
+					fmt.Println("Selected Game: ", args.Entry)
+				}),
+			)
+			root.AddChild(gameComboBox)
+			submitButton := widget.NewButton(
+				// set general widget options
+				widget.ButtonOpts.WidgetOpts(
+					// instruct the container's anchor layout to center the button both horizontally and vertically.
+					widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+						Position: widget.RowLayoutPositionEnd,
+						Stretch:  false,
+					}),
+				),
+				// specify the images to use.
+				widget.ButtonOpts.Image(loadButtonImage()),
+				// specify the button's text, the font face, and the color.
+				widget.ButtonOpts.Text("Start !", face, &widget.ButtonTextColor{
+					Idle:     hexToColor(textIdleColor),
+					Disabled: hexToColor(textDisabledColor),
+				}),
+				// specify that the button's text needs some padding for correct display.
+				widget.ButtonOpts.TextPadding(widget.Insets{
+					Left:   30,
+					Right:  30,
+					Top:    5,
+					Bottom: 5,
+				}),
+				// Move the text down and right on press
+				widget.ButtonOpts.PressedHandler(func(args *widget.ButtonPressedEventArgs) {
+					args.Button.Text().Padding.Top = 1
+					args.Button.Text().Padding.Bottom = -1
+					args.Button.GetWidget().CustomData = true
+				}),
+				// Move the text back to start on press released
+				widget.ButtonOpts.ReleasedHandler(func(args *widget.ButtonReleasedEventArgs) {
+					args.Button.Text().Padding.Top = 0
+					args.Button.Text().Padding.Bottom = 0
+					args.Button.GetWidget().CustomData = false
+				}),
+				// add a handler that reacts to clicking the button.
+				widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+					clientConfig := useClientConfig(configPath)
+					slog.Info("submit", "client config", clientConfig)
+					startGamePromise <- clientConfig
+				}),
+				// Indicate that this button should not be submitted when enter or space are pressed
+				widget.ButtonOpts.DisableDefaultKeys(),
+			)
+			root.AddChild(submitButton)
 		}),
 		// Indicate that this button should not be submitted when enter or space are pressed
 		widget.ButtonOpts.DisableDefaultKeys(),
 	)
-	submitButton = widget.NewButton(
-		// set general widget options
-		widget.ButtonOpts.WidgetOpts(
-			// instruct the container's anchor layout to center the button both horizontally and vertically.
-			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
-				Position: widget.RowLayoutPositionEnd,
-				Stretch:  false,
-			}),
-		),
-		// specify the images to use.
-		widget.ButtonOpts.Image(loadButtonImage()),
-		// specify the button's text, the font face, and the color.
-		widget.ButtonOpts.Text("Start !", face, &widget.ButtonTextColor{
-			Idle:     hexToColor(textIdleColor),
-			Disabled: hexToColor(textDisabledColor),
-		}),
-		// specify that the button's text needs some padding for correct display.
-		widget.ButtonOpts.TextPadding(widget.Insets{
-			Left:   30,
-			Right:  30,
-			Top:    5,
-			Bottom: 5,
-		}),
-		// Move the text down and right on press
-		widget.ButtonOpts.PressedHandler(func(args *widget.ButtonPressedEventArgs) {
-			args.Button.Text().Padding.Top = 1
-			args.Button.Text().Padding.Bottom = -1
-			args.Button.GetWidget().CustomData = true
-		}),
-		// Move the text back to start on press released
-		widget.ButtonOpts.ReleasedHandler(func(args *widget.ButtonReleasedEventArgs) {
-			args.Button.Text().Padding.Top = 0
-			args.Button.Text().Padding.Bottom = 0
-			args.Button.GetWidget().CustomData = false
-		}),
-		// add a handler that reacts to clicking the button.
-		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			slog.Info("submit", "client config", useClientConfig(configPath))
-		}),
-		// Indicate that this button should not be submitted when enter or space are pressed
-		widget.ButtonOpts.DisableDefaultKeys(),
-	)
-	submitButton.GetWidget().Visibility = widget.Visibility_Hide
 	root.AddChild(nextButton)
-	root.AddChild(submitButton)
 	ui := &ebitenui.UI{
 		Container: root,
 	}

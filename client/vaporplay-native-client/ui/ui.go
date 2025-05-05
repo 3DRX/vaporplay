@@ -15,7 +15,6 @@ import (
 
 type UIThread struct {
 	frameChan        <-chan image.Image
-	startGamePromise chan *clientconfig.ClientConfig
 	game             *ebitenGame
 	configPath       *string
 }
@@ -26,12 +25,6 @@ type ebitenGame struct {
 	ui                 *ebitenui.UI
 
 	lock sync.Mutex
-}
-
-type ListEntry struct {
-	id    int
-	name  string
-	value string
 }
 
 func NewUIThread(
@@ -45,16 +38,14 @@ func NewUIThread(
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetWindowClosingHandled(true)
 
+	startGamePromise := make(chan *clientconfig.ClientConfig)
 	game := &ebitenGame{
 		closeWindowPromise: closeWindowPromise,
-		ui:                 loadUI(*configPath),
+		ui:                 loadUI(*configPath, startGamePromise),
 	}
-
-	startGamePromise := make(chan *clientconfig.ClientConfig)
 
 	return &UIThread{
 		frameChan:        frameChan,
-		startGamePromise: startGamePromise,
 		game:             game,
 		configPath:       configPath,
 	}, startGamePromise
