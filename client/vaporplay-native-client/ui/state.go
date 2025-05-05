@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -62,7 +63,7 @@ func fetchGameData(configPath string) (*[]config.GameConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Get(cfg.Addr)
+	resp, err := http.Get(fmt.Sprintf("%s/%s", cfg.Addr, "games"))
 	if err != nil {
 		return nil, err
 	}
