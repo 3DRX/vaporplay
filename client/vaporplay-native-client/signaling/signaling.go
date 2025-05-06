@@ -11,7 +11,6 @@ import (
 )
 
 type SignalingThread struct {
-	cfg           *clientconfig.ClientConfig
 	c             *websocket.Conn
 	sdpChan       chan<- webrtc.SessionDescription
 	sdpReplyChan  <-chan webrtc.SessionDescription
@@ -32,8 +31,12 @@ func NewSignalingThread(
 }
 
 func (s *SignalingThread) Spin(cfg *clientconfig.ClientConfig) {
-	s.cfg = cfg
-	u := url.URL{Scheme: "ws", Host: s.cfg.Addr, Path: "/webrtc"}
+	u, err := url.Parse(cfg.Addr)
+	if err != nil {
+		panic(err)
+	}
+	u.Scheme = "ws"
+	u.Path = "/webrtc"
 	slog.Info("start spinning", "url", u.String())
 	wsConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -52,7 +55,7 @@ func (s *SignalingThread) Spin(cfg *clientconfig.ClientConfig) {
 		}
 	}()
 
-	cfgMessage, err := json.Marshal(s.cfg.SessionConfig)
+	cfgMessage, err := json.Marshal(cfg.SessionConfig)
 	if err != nil {
 		slog.Error("compose session config error", "error", err)
 		return

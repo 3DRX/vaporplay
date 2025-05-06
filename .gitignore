@@ -6,3 +6,4 @@ vaporplay-native-client
 tmp/
 *.csv
 config-local.json
+client_config.json

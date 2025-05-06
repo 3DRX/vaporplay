@@ -12,7 +12,7 @@ import (
 
 // TODO: add profile capability to native client
 // var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to file")
-var configPath = flag.String("config", "", "path to config file")
+var configPath = flag.String("config", "client_config.json", "path to config file")
 
 func main() {
 	flag.Parse()
@@ -23,7 +23,7 @@ func main() {
 	sdpReplyChan := make(chan webrtc.SessionDescription)
 	candidateChan := make(chan webrtc.ICECandidateInit)
 	frameChan := make(chan image.Image, 120)
-	closeWindowPromise := make(chan struct{})
+	closeWindowPromise := make(chan struct{}, 1)
 
 	uiThread, startGamePromise := ui.NewUIThread(
 		frameChan,

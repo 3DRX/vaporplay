@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ebitenui/ebitenui"
 	"github.com/hajimehoshi/ebiten/v2"
 
 	clientconfig "github.com/3DRX/vaporplay/client/vaporplay-native-client/client-config"
@@ -14,7 +15,6 @@ import (
 
 type UIThread struct {
 	frameChan        <-chan image.Image
-	startGamePromise chan *clientconfig.ClientConfig
 	game             *ebitenGame
 	configPath       *string
 }
@@ -22,6 +22,7 @@ type UIThread struct {
 type ebitenGame struct {
 	frame              *ebiten.Image
 	closeWindowPromise chan<- struct{}
+	ui                 *ebitenui.UI
 
 	lock sync.Mutex
 }
@@ -37,15 +38,14 @@ func NewUIThread(
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetWindowClosingHandled(true)
 
+	startGamePromise := make(chan *clientconfig.ClientConfig)
 	game := &ebitenGame{
 		closeWindowPromise: closeWindowPromise,
+		ui:                 loadUI(*configPath, startGamePromise),
 	}
-
-	startGamePromise := make(chan *clientconfig.ClientConfig)
 
 	return &UIThread{
 		frameChan:        frameChan,
-		startGamePromise: startGamePromise,
 		game:             game,
 		configPath:       configPath,
 	}, startGamePromise
@@ -61,28 +61,24 @@ func (u *UIThread) Spin() {
 		}
 	}()
 
-	go u.readConfig()
-
 	err := ebiten.RunGame(u.game)
 	if err != nil {
 		slog.Error("ebiten error", "error", err)
 	}
 }
 
-func (u *UIThread) readConfig() {
-	// wait 1 second, mock user input
-	time.Sleep(1 * time.Second)
-	cfg := clientconfig.LoadClientConfig(u.configPath)
-	slog.Info("start game", "game_id", cfg.SessionConfig.GameConfig.GameId)
-	u.startGamePromise <- cfg
-}
-
 func (g *ebitenGame) Update() error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	if ebiten.IsWindowBeingClosed() {
 		slog.Info("closing window")
 		g.closeWindowPromise <- struct{}{}
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		os.Exit(0)
+	}
+	if g.frame == nil {
+		g.ui.Update()
 	}
 	return nil
 }
@@ -92,6 +88,8 @@ func (g *ebitenGame) Draw(screen *ebiten.Image) {
 	defer g.lock.Unlock()
 
 	if g.frame == nil {
+		// draw connection form
+		g.ui.Draw(screen)
 		return
 	}
 
