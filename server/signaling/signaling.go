@@ -172,6 +172,7 @@ func (s *SignalingThread) handleRecvMessages() {
 		_, message, err := s.conn.ReadMessage()
 		if err != nil {
 			slog.Error("websocket read error", "error", err)
+			s.conn.Close()
 			return
 		}
 		selectedGame := &config.SessionConfig{}
@@ -185,6 +186,7 @@ func (s *SignalingThread) handleRecvMessages() {
 			_, message, err = s.conn.ReadMessage()
 			if err != nil {
 				slog.Error("websocket read error", "error", err)
+				s.conn.Close()
 				return
 			}
 			// try to parse it as an SDP
