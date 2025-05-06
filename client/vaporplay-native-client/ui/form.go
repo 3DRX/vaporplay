@@ -579,9 +579,25 @@ func loadUI(configPath string, startGamePromise chan *clientconfig.ClientConfig)
 					}),
 				//Callback when a new entry is selected
 				widget.ListComboButtonOpts.EntrySelectedHandler(func(args *widget.ListComboButtonEntrySelectedEventArgs) {
-					fmt.Println("Selected Game: ", args.Entry)
+					gameConfig, ok := gameconfigsMap[args.Entry.(GameListEntry).id]
+					if !ok {
+						return
+					}
+					setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+						cc.SessionConfig.GameConfig = gameConfig
+					})
 				}),
 			)
+			_, ok := gameconfigsMap[cfg.SessionConfig.GameConfig.GameId]
+			if ok {
+				gameComboBox.SetSelectedEntry(GameListEntry{
+					id: cfg.SessionConfig.GameConfig.GameId,
+				})
+			} else {
+				setClientConfig(configPath, func(cc *clientconfig.ClientConfig) {
+					cc.SessionConfig.GameConfig = (*gameconfigs)[0]
+				})
+			}
 			root.AddChild(gameComboBox)
 			submitButton := widget.NewButton(
 				// set general widget options
