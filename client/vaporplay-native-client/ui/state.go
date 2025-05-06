@@ -63,7 +63,9 @@ func fetchGameData(configPath string) (*[]config.GameConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Get(fmt.Sprintf("%s/%s", cfg.Addr, "games"))
+	url := fmt.Sprintf("%s/%s", cfg.Addr, "games")
+	slog.Info("fetchGameData", "url", url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
