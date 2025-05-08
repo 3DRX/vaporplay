@@ -47,7 +47,7 @@ func newVideoDecoder(codecConfig config.CodecConfig, frameChan chan<- image.Imag
 			codec:             codecConfig.Codec,
 			frameChan:         frameChan,
 		}
-	case "h264_nvenc":
+	case "h264_nvenc", "libx264":
 		return &VideoDecoder{
 			sampleBuilder:     samplebuilder.New(maxLate, &codecs.H264Packet{}, sampleRate),
 			codecCreated:      false,
@@ -117,7 +117,7 @@ func (s *VideoDecoder) Init() {
 		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDHevc)); s.decCodec == nil {
 			panic("failed to find decoder")
 		}
-	case "h264_nvenc":
+	case "h264_nvenc", "libx264":
 		if s.decCodec = astiav.FindDecoder(astiav.CodecID(astiav.CodecIDH264)); s.decCodec == nil {
 			panic("failed to find decoder")
 		}

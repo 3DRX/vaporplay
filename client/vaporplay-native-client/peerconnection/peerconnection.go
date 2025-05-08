@@ -208,7 +208,7 @@ func configureCodec(m *webrtc.MediaEngine, config config.CodecConfig) error {
 		); err != nil {
 			return err
 		}
-	case "h264_nvenc":
+	case "h264_nvenc", "libx264":
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{
